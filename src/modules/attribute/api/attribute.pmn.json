@@ -1,0 +1,431 @@
+{
+  "item": [
+    {
+      "name": "Attributes CRUD",
+      "item": [
+        {
+          "name": "POST /admin/attribute (Create)",
+          "item": [
+            {
+              "name": "Success - Create with values",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", () => {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attribute && res.attribute.id) {",
+                      "    pm.collectionVariables.set(\"attribute_id\", res.attribute.id);",
+                      "    console.log(`Saved attribute_id: ${res.attribute.id}`);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Fabric\",\n        \"handle\": \"fabric-test\",\n        \"type\": \"multi\",\n        \"filterable\": true,\n        \"metadata\": \"{\\\"source\\\": \\\"postman_test\\\"}\"\n    },\n    \"valueListData\": [\n        {\n            \"name\": \"Silk\",\n            \"value\": \"Silk\",\n            \"rank\": 1,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        },\n        {\n            \"name\": \"Linen\",\n            \"value\": \"Linen\",\n            \"rank\": 0,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        }\n    ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Missing required 'name' in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"handle\": \"missing-name-test\",\n        \"type\": \"single\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Invalid 'type' enum in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Invalid Type Test\",\n        \"handle\": \"invalid-type-test\",\n        \"type\": \"invalid_enum_value\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute (List)",
+          "item": [
+            {
+              "name": "Success - List (Simple)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - List (with Relations & Sorting)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?order=-name&limit=10&fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "order",
+                      "value": "-name"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute/:id (Retrieve)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID (with Relations)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response contains attribute object\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test(\"Attribute includes 'values' array\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute.values).to.be.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}?fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"],
+                  "query": [
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Not Found",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404 Not Found\", () => {",
+                      "    pm.response.to.have.status(404);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/attr_nonexistent",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "attr_nonexistent"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "POST /admin/attribute/:id (Update)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Update by ID",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Fabric Type (Updated)\",\n    \"filterable\": false,\n    \"metadata\": \"{\\\"updated_by\\\": \\\"admin_user\\\"}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "DELETE /admin/attribute/:id (Delete)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Delete by ID",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "CRUD operations for the Attributes endpoint."
+    }
+  ],
+  "variable": [
+    {
+      "key": "attribute_id",
+      "value": ""
+    }
+  ]
+}

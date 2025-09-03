@@ -1,8 +1,10 @@
-// src/modules/my-module/index.ts
-import { Module } from "@medusajs/framework/utils";
-import AttributeModuleService from "./service/attribute.service";
+// src/modules/attributes/index.ts
 
-export const MODULE_ATTRIBUTE_NAME = "attribute";
-export default Module(MODULE_ATTRIBUTE_NAME, {
+import { Module } from "@medusajs/framework/utils";
+import AttributeModuleService from "./service/service";
+
+export const ATTRIBUTE_MODULE = "attribute";
+
+export default Module(ATTRIBUTE_MODULE, {
   service: AttributeModuleService,
 });
