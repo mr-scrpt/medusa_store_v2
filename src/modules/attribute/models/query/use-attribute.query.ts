@@ -1,3 +1,4 @@
+//  src/modules/attribute/models/query/use-attribute.query.ts
 import { useQuery } from "@tanstack/react-query";
 
 import { attributeApi } from "../../api/endpoint.api";

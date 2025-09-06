@@ -1,0 +1,2064 @@
+//  src/modules/attribute/models/attribute.ts
+import { model } from "@medusajs/framework/utils";
+import { AttributeFieldType } from "../domain/type";
+import AttributeValueSchema from "./attribute-value";
+
+const AttributeSchema = model.define("attribute", {
+  id: model.id().primaryKey(),
+  name: model.text(),
+  handle: model.text().unique(),
+  filterable: model.boolean().default(false),WorkflowInput
+  metadata: model.json().nullable(),
+  values: model.hasMany(() => AttributeValueSchema, {
+    foreignKey: "attribute_id",
+  }),
+});
+
+export default AttributeSchema;
+
+
+# --- END OF FILE: src/modules/attribute/models/attribute.ts ---
+
+//  src/modules/attribute/models/query/use-attribute.query.ts
+import { useQuery } from "@tanstack/react-query";
+
+import { attributeApi } from "../../api/endpoint.api";
+import {
+  ATTRIBUTE_RELATION_FIELDS,
+  AttributeListParams,
+  AttributeListResponse,
+  AttributeRelationFieldList,
+  AttributeRelationResponse,
+  AttributeResponse,
+} from "../../interface.type";
+
+const useAttributeFabric =
+  <T extends AttributeResponse>(relations?: AttributeRelationFieldList) =>
+  ({ attributeId }: { attributeId: string }) => {
+    const { data, ...rest } = useQuery({
+      queryKey: ["attribute", attributeId, relations],
+      queryFn: async () => {
+        return attributeApi.get<T>({
+          id: attributeId,
+          ...relations,
+        });
+      },
+
+      enabled: !!attributeId,
+    });
+
+    return { attributeData: data, ...rest };
+  };
+
+export const useAttributeQuery = useAttributeFabric();
+export const useAttributeWithValueListQuery =
+  useAttributeFabric<AttributeRelationResponse>(ATTRIBUTE_RELATION_FIELDS);
+
+const useAttributeListFabric =
+  (relations?: AttributeRelationFieldList) => (query: AttributeListParams) => {
+    const { data, ...rest } = useQuery({
+      queryKey: ["attribute", query, relations],
+      queryFn: async () => {
+        return attributeApi.getList<AttributeListResponse>({
+          ...query,
+          ...relations,
+        });
+      },
+    });
+
+    return { ...data, ...rest };
+  };
+
+export const useAttributeListQuery = useAttributeListFabric();
+export const useAttributeListWithValueListQuery = useAttributeListFabric(
+  ATTRIBUTE_RELATION_FIELDS,
+);
+
+
+# --- END OF FILE: src/modules/attribute/models/query/use-attribute.query.ts ---
+
+//  src/modules/attribute/models/attribute-value.ts
+import { model } from "@medusajs/framework/utils";
+import AttributeSchema from "./attribute";
+
+const AttributeValueSchema = model.define("attribute_value", {
+  id: model.id().primaryKey(),
+  name: model.text(),
+  value: model.text(),
+  rank: model.number().default(0),
+  metadata: model.json().nullable(),
+  attribute: model.belongsTo(() => AttributeSchema, {
+    foreignKey: "attribute_id",
+  }),
+});
+
+export default AttributeValueSchema;
+
+
+# --- END OF FILE: src/modules/attribute/models/attribute-value.ts ---
+
+//  src/modules/attribute/models/form/attribute-form.model.ts
+import { combineDefaultSchemas } from "@/shared/lib/react-hook-form";
+import { DefaultValues } from "react-hook-form";
+import { AttributeValueFormDefaultValue } from "../../domain/attribute-value.schema";
+import { AttributeFormDefaultValues } from "../../domain/attribute.schema";
+import { AttributeRelationCreateForm } from "../../domain/from-create.schema";
+import {
+  AttributeFieldType,
+  AttributeRelationResponse,
+} from "../../interface.type";
+
+export const attributeFormDefaultValues: AttributeFormDefaultValues = {
+  name: "",
+  handle: "",
+  type: AttributeFieldType.SINGLE,
+  filterable: false,
+  metadata: "",
+};
+
+export const attributeValueFormDefaultValues: AttributeValueFormDefaultValue = {
+  name: "",
+  value: "",
+  rank: 0,
+  metadata: "",
+};
+
+export const attributeRelationFromDefaultValues: AttributeRelationCreateForm =
+  combineDefaultSchemas<AttributeRelationCreateForm>({
+    attributeData: attributeFormDefaultValues,
+    valueListData: [attributeValueFormDefaultValues],
+  });
+
+export const buildAttributeToForm = (
+  attributeRelationResponse?: AttributeRelationResponse,
+): AttributeRelationCreateForm => {
+  if (!attributeRelationResponse) {
+    return attributeRelationFromDefaultValues;
+  }
+  attributeRelationResponse;
+
+  return {
+    ...attributeRelationResponse,
+    attributeData: {
+      ...attributeRelationResponse.attributeData,
+      metadata: JSON.stringify(
+        attributeRelationResponse.attributeData.metadata,
+      ),
+    },
+    valueListData: attributeRelationResponse.valueListData.map((item) => {
+      return {
+        ...item,
+        metadata: JSON.stringify(item.metadata),
+      };
+    }),
+  };
+};
+
+export const getAttributeRelationCreateFormDefaultValues = <
+  T extends AttributeRelationCreateForm,
+>(
+  customDefaults?: DefaultValues<T>,
+): DefaultValues<T> => {
+  return {
+    ...attributeRelationFromDefaultValues,
+    ...customDefaults,
+  } as DefaultValues<T>;
+};
+
+
+# --- END OF FILE: src/modules/attribute/models/form/attribute-form.model.ts ---
+
+//  src/modules/attribute/models/mutation/use-attribute-create.mutation.ts
+import { toast } from "@medusajs/ui";
+import { useMutation } from "@tanstack/react-query";
+import { attributeApi } from "../../api/endpoint.api";
+import { AttributeRelationCreatePayload } from "../../interface.type";
+
+type UseAttributeCreateFabricProps = {
+  onSuccess: () => void;
+  onError: () => void;
+};
+const useAttributeCreateFabric =
+  ({ onSuccess, onError }: UseAttributeCreateFabricProps) =>
+  () => {
+    const { mutateAsync, ...rest } = useMutation({
+      mutationFn: async (data: AttributeRelationCreatePayload) => {
+        return attributeApi.create(data);
+      },
+      onSuccess,
+      onError,
+    });
+    return { createAttribute: mutateAsync, ...rest };
+  };
+
+export const useAttributeCreateMutation = useAttributeCreateFabric({
+  onSuccess: () => {
+    toast.success("Attribute created successfully");
+  },
+  onError: () => toast.error("Failed to create attribute"),
+});
+
+
+# --- END OF FILE: src/modules/attribute/models/mutation/use-attribute-create.mutation.ts ---
+
+//  src/modules/attribute/index.ts
+
+import { Module } from "@medusajs/framework/utils";
+import AttributeModuleService from "./service/service";
+
+export const ATTRIBUTE_MODULE = "attribute";
+
+export default Module(ATTRIBUTE_MODULE, {
+  service: AttributeModuleService,
+});
+
+
+# --- END OF FILE: src/modules/attribute/index.ts ---
+
+// src/modules/attribute/interface.type.ts
+export * from "./domain/type";
+export * from "./domain/api.type";
+export * from "./api/route.api";
+
+
+# --- END OF FILE: src/modules/attribute/interface.type.ts ---
+
+//  src/modules/attribute/ui/form/index.tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Spinner } from "@medusajs/icons";
+import { Button, Label, Text } from "@medusajs/ui";
+import cx from "classnames";
+import { ComponentProps, useEffect } from "react";
+import {
+  Controller,
+  DefaultValues,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
+import { ZodTypeAny } from "zod";
+import { AttributeHandleElement } from "./element/attribute-handle.element";
+import { AttributeIsFilterableElement } from "./element/attribute-is-filterable.element";
+import { AttributeJSONViewElement } from "./element/attribute-json-view.element";
+import { AttributeNameElement } from "./element/attribute-name.element";
+import { AttributeTypeElement } from "./element/attribute-type.element";
+import { AttributeValueListElement } from "./element/value-list/attribute-vlaue-list.element";
+import { ButtonSubmitProps } from "@/shared/lib/react-hook-form";
+import {
+  AttributeRelationCreateForm,
+  AttributeRelationCreateFormSchema,
+} from "../../domain/from-create.schema";
+import { getAttributeRelationCreateFormDefaultValues } from "../../models/form/attribute-form.model";
+
+type AttributeFromCreateProps<T extends AttributeRelationCreateForm> =
+  ComponentProps<"div"> & {
+    onSubmitForm: (data: T) => void;
+    schema?: ZodTypeAny;
+    defaultValues?: DefaultValues<T>;
+  };
+
+type AttributeFormComponent = <T extends AttributeRelationCreateForm>(
+  props: AttributeFromCreateProps<T>,
+) => React.ReactElement;
+
+type AttributeFormFields = {
+  FieldName: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldHandle: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldType: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldIsFilterable: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldValuesList: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldJSONView: (props: ComponentProps<"div">) => React.ReactElement;
+  ButtonSubmit: (props: ButtonSubmitProps) => React.ReactElement;
+};
+
+// 3. Объединяем их в один тип
+type AttributeFromType = AttributeFormComponent & AttributeFormFields;
+
+export const AttributeFrom: AttributeFromType = <
+  T extends AttributeRelationCreateForm,
+>(
+  props: AttributeFromCreateProps<T>,
+) => {
+  const { children, className, onSubmitForm, defaultValues, schema, ...rest } =
+    props;
+
+  const form = useForm<T>({
+    resolver: zodResolver(schema || AttributeRelationCreateFormSchema),
+    defaultValues:
+      getAttributeRelationCreateFormDefaultValues<T>(defaultValues),
+  });
+
+  useEffect(() => {
+    form.reset(getAttributeRelationCreateFormDefaultValues<T>(defaultValues));
+  }, [defaultValues, form]);
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmitForm)}
+        className={cx("flex flex-col gap-4", className)}
+      >
+        {children}
+      </form>
+    </FormProvider>
+  );
+};
+
+AttributeFrom.FieldName = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.name"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Name
+          </Label>
+          <AttributeNameElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldHandle = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.handle"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Handle
+          </Label>
+          <AttributeHandleElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldType = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.type"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Type
+          </Label>
+          <AttributeTypeElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+// type AttributeIsFilterableElementProps = ComponentProps<"div">;
+AttributeFrom.FieldIsFilterable = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.filterable"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Is Filterable?
+          </Label>
+          <AttributeIsFilterableElement
+            id="filterable"
+            checked={!!field.value}
+            onCheckedChange={(val) => field.onChange(val === true)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldJSONView = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.metadata"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute JSON View
+          </Label>
+          <AttributeJSONViewElement
+            data={field.value}
+            onSave={field.onChange}
+          />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldValuesList = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "valueListData",
+  });
+  return (
+    <div className={cx("flex flex-col gap-2", className)}>
+      <Label size="small" weight="plus">
+        Attribute Values
+      </Label>
+      <AttributeValueListElement
+        fields={fields}
+        onAppend={append}
+        onRemove={remove}
+      />
+    </div>
+  );
+};
+
+AttributeFrom.ButtonSubmit = (props) => {
+  const { isPending, submitText, ...rest } = props;
+
+  return (
+    <Button type="submit" disabled={isPending} {...rest}>
+      {isPending && <Spinner className="mr-2 h-4 w-4 animate-spin" />}
+      {submitText}
+    </Button>
+  );
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/index.tsx ---
+
+//  src/modules/attribute/ui/form/type.ts
+import { ComponentProps } from "react";
+
+export type AttributeFormDefaultProps = ComponentProps<"div"> & {
+  callbackUrl?: string;
+  onSuccess?: () => void;
+  onError?: () => void;
+};
+
+export type AttributeFormCreateProps = AttributeFormDefaultProps;
+export type AttributeFormUpdateProps = AttributeFormDefaultProps & {
+  attributeId: string;
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/type.ts ---
+
+//  src/modules/attribute/ui/form/attribute-form-create.tsx
+import { Container, Heading } from "@medusajs/ui";
+import { AttributeFrom } from ".";
+import { useAttributeCreateHandler } from "./handler/use-attribute-create.handler";
+import { AttributeFormCreateProps } from "./type";
+
+export const AttributeFormCreate = (props: AttributeFormCreateProps) => {
+  const { callbackUrl, onSuccess, onError, ...rest } = props;
+  const { handleAttributeCreate, isPending, isError } =
+    useAttributeCreateHandler({
+      onSuccess,
+      onError,
+      callbackUrl,
+    });
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+
+      <AttributeFrom
+        className="flex flex-col gap-y-4"
+        onSubmitForm={handleAttributeCreate}
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldName />
+          <AttributeFrom.FieldHandle />
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldType />
+          <AttributeFrom.FieldIsFilterable />
+        </div>
+
+        <AttributeFrom.FieldJSONView />
+
+        <Heading level="h2">Values</Heading>
+
+        <AttributeFrom.FieldValuesList />
+
+        <div className="flex justify-end mt-4">
+          <AttributeFrom.ButtonSubmit
+            isPending={isPending}
+            submitText="Create Attribute"
+          />
+        </div>
+      </AttributeFrom>
+    </Container>
+  );
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/attribute-form-create.tsx ---
+
+// src/modules/attribute/ui/form/_attribute-create-form.tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Container, Heading, Input, Select, Text } from "@medusajs/ui";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+
+import { JsonViewSection } from "@/shared/ui/kit/json-view-section/json-view-section";
+import {
+  AttributeRelationCreateForm,
+  AttributeRelationCreateFormSchema,
+  defaultAttributeRelationCreateForm,
+} from "../../domain/from-create.schema";
+import { useAttributeCreateHandler } from "./handler/use-attribute-create.handler";
+import {
+  PAGE_ATTRIBUTE_ROUTES,
+  AttributeFieldType,
+} from "../../interface.type";
+
+export const AttributeCreateForm = () => {
+  const form = useForm<AttributeRelationCreateForm>({
+    resolver: zodResolver(AttributeRelationCreateFormSchema),
+    defaultValues: {
+      ...defaultAttributeRelationCreateForm,
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "valueListData",
+  });
+
+  const { handleAttributeCreate, isPending, isError } =
+    useAttributeCreateHandler({
+      onSuccess: () => {
+        console.log("output_log: %%%%%%%%%%%%% =>>> OLOLOLO");
+      },
+      callbackUrl: PAGE_ATTRIBUTE_ROUTES.BASE,
+      onError: () => {
+        console.log("output_log: %%%%%%%%%%%%% =>>> OLOLOLO");
+      },
+    });
+
+  const { errors } = form.formState;
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+      <form
+        onSubmit={form.handleSubmit(handleAttributeCreate)}
+        className="flex flex-col gap-y-4"
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <div>
+            <Input
+              {...form.register("attributeData.name")}
+              placeholder="e.g. Color"
+            />
+            <div className="h-6 pt-1">
+              {errors.attributeData?.name && (
+                <Text className="text-ui-fg-error text-xs">
+                  {errors.attributeData.name.message}
+                </Text>
+              )}
+            </div>
+          </div>
+          <div>
+            <Input
+              {...form.register("attributeData.handle")}
+              placeholder="e.g. color"
+            />
+            <div className="h-6 pt-1">
+              {errors.attributeData?.handle && (
+                <Text className="text-ui-fg-error text-xs">
+                  {errors.attributeData.handle.message}
+                </Text>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <Controller
+            control={form.control}
+            name="attributeData.type"
+            render={({ field: { onChange, value } }) => (
+              <Select onValueChange={onChange} value={value}>
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {Object.entries(AttributeFieldType).map(([key, type]) => (
+                    <Select.Item key={type} value={type}>
+                      {key}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            )}
+          />
+          <div className="flex items-center gap-x-2">
+            <input
+              type="checkbox"
+              {...form.register("attributeData.filterable")}
+              id="filterable"
+            />
+            <label htmlFor="filterable" className="text-ui-fg-subtle text-sm">
+              Filterable
+            </label>
+          </div>
+        </div>
+
+        {}
+        <div>
+          <JsonViewSection
+            title="Metadata"
+            data={form.watch("attributeData.metadata")}
+            editable={true}
+            onSave={(value) => form.setValue("attributeData.metadata", value)}
+          />
+          <div className="h-6 pt-1">
+            {errors.attributeData?.metadata && (
+              <Text className="text-ui-fg-error text-xs">
+                {errors.attributeData.metadata.message}
+              </Text>
+            )}
+          </div>
+        </div>
+
+        <Heading level="h2">Values</Heading>
+        <div className="flex flex-col gap-y-2">
+          {fields.map((field, index) => (
+            <div
+              key={field.id}
+              className="grid grid-cols-3 items-start gap-x-4"
+            >
+              <div>
+                <Input
+                  {...form.register(`valueListData.${index}.name`)}
+                  placeholder="e.g. Red"
+                />
+                <div className="h-6 pt-1">
+                  {errors.valueListData?.[index]?.name && (
+                    <Text className="text-ui-fg-error text-xs">
+                      {errors.valueListData[index]?.name?.message}
+                    </Text>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Input
+                  {...form.register(`valueListData.${index}.value`)}
+                  placeholder="e.g. #FF0000"
+                />
+                <div className="h-6 pt-1">
+                  {errors.valueListData?.[index]?.value && (
+                    <Text className="text-ui-fg-error text-xs">
+                      {errors.valueListData[index]?.value?.message}
+                    </Text>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-x-2">
+                  <Input
+                    {...form.register(`valueListData.${index}.rank`, {
+                      valueAsNumber: true,
+                    })}
+                    type="number"
+                    defaultValue={0}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => remove(index)}
+                    variant="danger"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="h-6 pt-1" /> {}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          onClick={() => append({ name: "", value: "", rank: 0, metadata: "" })}
+        >
+          Add Value
+        </Button>
+
+        {}
+        <div className="flex justify-end mt-4">
+          <Button type="submit" isLoading={isPending}>
+            Create Attribute
+          </Button>
+        </div>
+      </form>
+    </Container>
+  );
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/_attribute-create-form.tsx ---
+
+//  src/modules/attribute/ui/form/hook/use-attribute-form-update.tsx
+import { buildAttributeToForm } from "@/modules/attribute/models/form/attribute-form.model";
+import { useMemo } from "react";
+import { useAttributeWithValueListQuery } from "../../../models/query/use-attribute.query";
+
+type UseAttributeFormUpdateProps = {
+  attributeId: string;
+};
+
+export const useAttributeFormUpdate = (props: UseAttributeFormUpdateProps) => {
+  const { attributeId } = props;
+  const { attributeData, ...rest } = useAttributeWithValueListQuery({
+    attributeId,
+  });
+
+  const formValues = useMemo(
+    () => buildAttributeToForm(attributeData),
+    [attributeData],
+  );
+
+  return {
+    formValues,
+    ...rest,
+  };
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/hook/use-attribute-form-update.tsx ---
+
+//  src/modules/attribute/ui/form/handler/use-attribute-create.handler.ts
+import { HandlerFormBaseProps } from "@/shared/lib/react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { AttributeRelationCreateForm } from "../../../domain/from-create.schema";
+import { useAttributeCreateMutation } from "../../../models/mutation/use-attribute-create.mutation";
+
+export const useAttributeCreateHandler = (props: HandlerFormBaseProps) => {
+  const { callbackUrl, onSuccess, onError } = props;
+  const { createAttribute, ...rest } = useAttributeCreateMutation();
+  const navigate = useNavigate();
+
+  const handleAttributeCreate = async (data: AttributeRelationCreateForm) => {
+    await createAttribute(data, {
+      onSuccess: () => {
+        onSuccess?.();
+        if (callbackUrl) navigate(callbackUrl);
+      },
+      onError: () => {
+        onError?.();
+        if (callbackUrl) navigate(callbackUrl);
+      },
+    });
+  };
+
+  return { handleAttributeCreate, ...rest };
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/handler/use-attribute-create.handler.ts ---
+
+//  src/modules/attribute/ui/form/attribute-form-update.tsx
+import { Container, Heading } from "@medusajs/ui";
+import { AttributeFrom } from ".";
+import { useAttributeFormUpdate } from "./hook/use-attribute-form-update";
+import { AttributeFormUpdateProps } from "./type";
+
+export const AttributeFormUpdate = (props: AttributeFormUpdateProps) => {
+  const { callbackUrl, attributeId, onSuccess, onError, ...rest } = props;
+  // const { formValues } = useAttributeFormUpdate({ attributeId });
+  // const { handleAttributeCreate, isPending, isError } =
+  //   useAttributeUpdateHandler({
+  //     onSuccess,
+  //     onError,
+  //     callbackUrl,
+  //   });
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+
+      <AttributeFrom
+        className="flex flex-col gap-y-4"
+        onSubmitForm={(data) => console.log(data)}
+        defaultValues={{}}
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldName />
+          <AttributeFrom.FieldHandle />
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldType />
+          <AttributeFrom.FieldIsFilterable />
+        </div>
+
+        <AttributeFrom.FieldJSONView />
+
+        <Heading level="h2">Values</Heading>
+
+        <AttributeFrom.FieldValuesList />
+
+        <div className="flex justify-end mt-4">
+          <AttributeFrom.ButtonSubmit
+            isPending={false}
+            submitText="Create Attribute"
+          />
+        </div>
+      </AttributeFrom>
+    </Container>
+  );
+};
+
+
+# --- END OF FILE: src/modules/attribute/ui/form/attribute-form-update.tsx ---
+
+//  src/modules/attribute/api/controller.api.ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
+import { ATTRIBUTE_MODULE } from "../index";
+import { createAttributeWorkflow } from "../workflows/create-attribute";
+import { AttributeRelationCreatePayload } from "../domain/api.type";
+
+export async function getAttribute(req: MedusaRequest, res: MedusaResponse) {
+  const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
+  const attribute = await attributeModuleService.retrieveAttribute(
+    req.params.id,
+    req.retrieveConfig,
+  );
+  res.status(200).json({ attribute });
+}
+
+export async function listAttributes(req: MedusaRequest, res: MedusaResponse) {
+  const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
+  const [attributeList, count] =
+    await attributeModuleService.listAndCountAttributes(
+      req.filterableFields,
+      req.listConfig,
+    );
+  res.status(200).json({ attributeList, count });
+}
+
+export async function createAttribute(req: MedusaRequest, res: MedusaResponse) {
+  try {
+    const { result } = await createAttributeWorkflow(req.scope).run({
+      input: req.body as AttributeRelationCreatePayload,
+    });
+
+    res.status(201).json({
+      attribute: result.attributeCreated,
+      values: result.valueListCreated,
+    });
+  } catch (error) {
+    console.error("Error creating attribute:", error);
+    res.status(500).json({
+      error: "Failed to create attribute",
+      details: error.message,
+    });
+  }
+}
+
+
+# --- END OF FILE: src/modules/attribute/api/controller.api.ts ---
+
+//  src/modules/attribute/api/endpoint.api.ts
+import { sdk } from "@/shared/lib/medusa";
+import {
+  AttributeListParams,
+  AttributeRelationCreatePayload,
+} from "../interface.type";
+import { API_ATTRIBUTE_ENDPOINT } from "./route.api";
+
+export const attributeApi = {
+  get: async <T>({
+    id,
+    query,
+  }: {
+    id: string;
+    query?: AttributeListParams;
+  }): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_BY_ID(id), {
+      method: "GET",
+      query,
+    });
+  },
+  getList: async <T>(query?: Record<string, any>): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_LIST, {
+      method: "GET",
+      query,
+    });
+  },
+  create: async <T>(data: AttributeRelationCreatePayload): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.MUTATION.CREATE, {
+      method: "POST",
+      body: data,
+    });
+  },
+};
+
+
+# --- END OF FILE: src/modules/attribute/api/endpoint.api.ts ---
+
+// src/modules/attribute/api/attribute.pmn.json
+{
+  "item": [
+    {
+      "name": "Attributes CRUD",
+      "item": [
+        {
+          "name": "POST /admin/attribute (Create)",
+          "item": [
+            {
+              "name": "Success - Create with values",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", () => {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attribute && res.attribute.id) {",
+                      "    pm.collectionVariables.set(\"attribute_id\", res.attribute.id);",
+                      "    console.log(`Saved attribute_id: ${res.attribute.id}`);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Fabric\",\n        \"handle\": \"fabric-test\",\n        \"type\": \"multi\",\n        \"filterable\": true,\n        \"metadata\": \"{\\\"source\\\": \\\"postman_test\\\"}\"\n    },\n    \"valueListData\": [\n        {\n            \"name\": \"Silk\",\n            \"value\": \"Silk\",\n            \"rank\": 1,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        },\n        {\n            \"name\": \"Linen\",\n            \"value\": \"Linen\",\n            \"rank\": 0,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        }\n    ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Missing required 'name' in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"handle\": \"missing-name-test\",\n        \"type\": \"single\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Invalid 'type' enum in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Invalid Type Test\",\n        \"handle\": \"invalid-type-test\",\n        \"type\": \"invalid_enum_value\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute (List)",
+          "item": [
+            {
+              "name": "Success - List (Simple)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - List (with Relations & Sorting)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?order=-name&limit=10&fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "order",
+                      "value": "-name"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute/:id (Retrieve)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID (with Relations)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response contains attribute object\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test(\"Attribute includes 'values' array\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute.values).to.be.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}?fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"],
+                  "query": [
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Not Found",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404 Not Found\", () => {",
+                      "    pm.response.to.have.status(404);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/attr_nonexistent",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "attr_nonexistent"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "POST /admin/attribute/:id (Update)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Update by ID",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Fabric Type (Updated)\",\n    \"filterable\": false,\n    \"metadata\": \"{\\\"updated_by\\\": \\\"admin_user\\\"}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "DELETE /admin/attribute/:id (Delete)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Delete by ID",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "CRUD operations for the Attributes endpoint."
+    }
+  ],
+  "variable": [
+    {
+      "key": "attribute_id",
+      "value": ""
+    }
+  ]
+}
+
+
+# --- END OF FILE: src/modules/attribute/api/attribute.pmn.json ---
+
+//  src/modules/attribute/api/route.api.ts
+const BASE_ENDPOINT = "/admin/attribute";
+export const API_ATTRIBUTE_ENDPOINT = {
+  BASE: BASE_ENDPOINT,
+
+  QUERY: {
+    GET_LIST: "/admin/attribute",
+    GET_BY_ID: (id: string) => `${BASE_ENDPOINT}/${id}`,
+  },
+  MUTATION: {
+    CREATE: "/admin/attribute",
+    UPDATE: (id: string) => `${BASE_ENDPOINT}/${id}`,
+    DELETE: (id: string) => `${BASE_ENDPOINT}/${id}`,
+  },
+} as const;
+
+const BASE_ROUTE = "/attribute";
+
+export const PAGE_ATTRIBUTE_ROUTES = {
+  BASE: BASE_ROUTE,
+  CREATE: `${BASE_ROUTE}/create`,
+  EDIT: `${BASE_ROUTE}/:id/update`,
+} as const;
+
+
+# --- END OF FILE: src/modules/attribute/api/route.api.ts ---
+
+// src/modules/attribute/interface.server.ts
+export * from "./api/controller.api";
+
+
+# --- END OF FILE: src/modules/attribute/interface.server.ts ---
+
+//  src/modules/attribute/workflows/steps/create-attribute-value-step.ts
+import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
+import { ATTRIBUTE_MODULE } from "../..";
+import AttributeModuleService from "../../service/service";
+import { AttributeValueCreatePayload } from "../../interface.type";
+import { getMetadata } from "../../tool/metadata";
+
+export const createAttributeValuesStep = createStep(
+  "create-attribute-values-step",
+  async (
+    data: {
+      target: { id: string };
+      valueListData: AttributeValueCreatePayload[];
+    },
+    { container },
+  ) => {
+    console.log("output_log: DATA =>>>", data);
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    const valuesWithAttributeId = data.valueListData.map((value) => ({
+      ...value,
+      attribute_id: data.target.id,
+      metadata: getMetadata(value.metadata),
+    }));
+
+    const createdValues = await attributeModuleService.createAttributeValues(
+      valuesWithAttributeId,
+    );
+
+    return new StepResponse(createdValues, {
+      idList: createdValues.map((v) => v.id),
+    });
+  },
+  async (undoData, { container }) => {
+    if (!undoData?.idList?.length) return;
+
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    console.log(
+      `Compensation: Deleting attribute values with ids ${undoData.idList.join(", ")}`,
+    );
+    await attributeModuleService.deleteAttributeValues(undoData.idList);
+  },
+);
+
+
+# --- END OF FILE: src/modules/attribute/workflows/steps/create-attribute-value-step.ts ---
+
+//  src/modules/attribute/workflows/steps/create-attribute-steps.ts
+import { createStep, StepResponse } from "@medusajs/workflows-sdk";
+import { ATTRIBUTE_MODULE } from "../..";
+import { AttributeCreatePayload } from "../../interface.type";
+import AttributeModuleService from "../../service/service";
+import { getMetadata } from "../../tool/metadata";
+
+export const createAttributeStep = createStep(
+  "create-attribute-step",
+
+  async (data: AttributeCreatePayload, { container }) => {
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    const [createdAttribute] = await attributeModuleService.createAttributes([
+      {
+        ...data,
+        metadata: getMetadata(data.metadata),
+      },
+    ]);
+
+    return new StepResponse(createdAttribute, { id: createdAttribute.id });
+  },
+  async (undoData, { container }) => {
+    if (!undoData?.id) return;
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+    await attributeModuleService.deleteAttributes(undoData.id);
+  },
+);
+
+
+# --- END OF FILE: src/modules/attribute/workflows/steps/create-attribute-steps.ts ---
+
+//  src/modules/attribute/workflows/create-attribute.ts
+import { createWorkflow, WorkflowResponse } from "@medusajs/workflows-sdk";
+import { createAttributeStep } from "./steps/create-attribute-steps";
+
+import { AttributeRelationCreatePayload } from "../interface.type";
+import { createAttributeValuesStep } from "./steps/create-attribute-value-step";
+
+// workflow
+export const createAttributeWorkflow = createWorkflow(
+  "create-attribute-workflow",
+  (input: AttributeRelationCreatePayload) => {
+    const { attributeData, valueListData } = input;
+    const attributeCreated = createAttributeStep(attributeData);
+    const valueListCreated = createAttributeValuesStep({
+      target: { id: attributeCreated.id },
+      valueListData,
+    });
+    return new WorkflowResponse({ attributeCreated, valueListCreated });
+  },
+);
+
+
+# --- END OF FILE: src/modules/attribute/workflows/create-attribute.ts ---
+
+// import { AttributeType } from "@/modules/attribute/domain/type";
+// import {
+//   createWorkflow,
+//   transform,
+//   WorkflowData,
+//   WorkflowResponse,
+// } from "@medusajs/workflows-sdk";
+// import {
+//   updateAttributeStep,
+//   updateAttributeValuesStep,
+// } from "./steps/update-attribute-steps";
+//
+// export type WorkflowInput = {
+//   id: string;
+//   name?: string;
+//   handle?: string;
+//   type?: string;
+//   filterable?: boolean;
+//   metadata?: Record<string, unknown>;
+//   values?: {
+//     id?: string;
+//     value: string;
+//     rank?: number;
+//     metadata?: Record<string, unknown>;
+//   }[];
+// };
+//
+// export const updateAttributeWorkflow = createWorkflow(
+//   "update-attribute-workflow",
+//   (input: WorkflowData<WorkflowInput>) => {
+//     const updatedAttribute = updateAttributeStep(input);
+//
+//     const valuesInput = transform(
+//       { updatedAttribute, input },
+//       (data: { updatedAttribute: AttributeType; input: WorkflowInput }) => {
+//         if (!data.input.values || data.input.values.length === 0) {
+//           return {
+//             attribute_id: data.updatedAttribute.id,
+//             values: [],
+//           };
+//         }
+//         return {
+//           attribute_id: data.updatedAttribute.id,
+//           values: data.input.values,
+//         };
+//       },
+//     );
+//
+//     updateAttributeValuesStep(valuesInput);
+//
+//     return new WorkflowResponse(updatedAttribute);
+//   },
+// );
+
+
+# --- END OF FILE: src/modules/attribute/workflows/update-attribute.ts ---
+
+// src/modules/attribute/migrations/Migration20250903094732.ts
+import { Migration } from '@mikro-orm/migrations';
+
+export class Migration20250903094732 extends Migration {
+
+  override async up(): Promise<void> {
+    this.addSql(`alter table if exists "attribute" drop constraint if exists "attribute_handle_unique";`);
+    this.addSql(`create table if not exists "attribute" ("id" text not null, "name" text not null, "handle" text not null, "type" text check ("type" in ('multi', 'single', 'boolean', 'range')) not null, "filterable" boolean not null default false, "metadata" jsonb null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "attribute_pkey" primary key ("id"));`);
+    this.addSql(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_attribute_handle_unique" ON "attribute" (handle) WHERE deleted_at IS NULL;`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_deleted_at" ON "attribute" (deleted_at) WHERE deleted_at IS NULL;`);
+
+    this.addSql(`create table if not exists "attribute_value" ("id" text not null, "name" text not null, "value" text not null, "rank" integer not null default 0, "metadata" jsonb null, "attribute_id" text not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "attribute_value_pkey" primary key ("id"));`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_value_attribute_id" ON "attribute_value" (attribute_id) WHERE deleted_at IS NULL;`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_value_deleted_at" ON "attribute_value" (deleted_at) WHERE deleted_at IS NULL;`);
+
+    this.addSql(`alter table if exists "attribute_value" add constraint "attribute_value_attribute_id_foreign" foreign key ("attribute_id") references "attribute" ("id") on update cascade;`);
+  }
+
+  override async down(): Promise<void> {
+    this.addSql(`alter table if exists "attribute_value" drop constraint if exists "attribute_value_attribute_id_foreign";`);
+
+    this.addSql(`drop table if exists "attribute" cascade;`);
+
+    this.addSql(`drop table if exists "attribute_value" cascade;`);
+  }
+
+}
+
+
+# --- END OF FILE: src/modules/attribute/migrations/Migration20250903094732.ts ---
+
+// src/modules/attribute/migrations/.snapshot-attribute.json
+{
+  "namespaces": [
+    "public"
+  ],
+  "name": "public",
+  "tables": [
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "handle": {
+          "name": "handle",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "enumItems": [
+            "multi",
+            "single",
+            "boolean",
+            "range"
+          ],
+          "mappedType": "enum"
+        },
+        "filterable": {
+          "name": "filterable",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "boolean"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        }
+      },
+      "name": "attribute",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "IDX_attribute_handle_unique",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_attribute_handle_unique\" ON \"attribute\" (handle) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "IDX_attribute_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_deleted_at\" ON \"attribute\" (deleted_at) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "attribute_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "0",
+          "mappedType": "integer"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "attribute_id": {
+          "name": "attribute_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        }
+      },
+      "name": "attribute_value",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "IDX_attribute_value_attribute_id",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_value_attribute_id\" ON \"attribute_value\" (attribute_id) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "IDX_attribute_value_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_value_deleted_at\" ON \"attribute_value\" (deleted_at) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "attribute_value_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "attribute_value_attribute_id_foreign": {
+          "constraintName": "attribute_value_attribute_id_foreign",
+          "columnNames": [
+            "attribute_id"
+          ],
+          "localTableName": "public.attribute_value",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.attribute",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    }
+  ],
+  "nativeEnums": {}
+}
+
+
+# --- END OF FILE: src/modules/attribute/migrations/.snapshot-attribute.json ---
+
+//  src/modules/attribute/domain/type.ts
+import { InferTypeOf } from "@medusajs/framework/types";
+import AttributeSchema from "../models/attribute";
+import AttributeValueSchema from "../models/attribute-value";
+
+export enum AttributeFieldType {
+  MULTI = "multi",
+  SINGLE = "single",
+  BOOLEAN = "boolean",
+  RANGE = "range",
+}
+
+export const ATTRIBUTE_RELATION_FIELDS = {
+  fields: "values.*",
+};
+export type AttributeRelationFieldList = typeof ATTRIBUTE_RELATION_FIELDS;
+
+export type AttributeType = Omit<InferTypeOf<typeof AttributeSchema>, "values">;
+
+export type AttributeRelationType = InferTypeOf<typeof AttributeSchema>;
+
+export type AttributeValueType = InferTypeOf<typeof AttributeValueSchema>;
+
+
+# --- END OF FILE: src/modules/attribute/domain/type.ts ---
+
+//  src/modules/attribute/domain/attribute.schema.ts
+import { jsonString } from "@/shared/lib/zod";
+import { AttributeFieldType } from "./type";
+import { z } from "zod";
+
+export const AttributeCreateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  handle: z.string().min(1, "Handle is required"),
+  type: z.nativeEnum(AttributeFieldType),
+  filterable: z.boolean().default(false),
+  metadata: jsonString,
+});
+
+export type AttributeFormDefaultValues<
+  T extends z.ZodTypeAny = typeof AttributeCreateSchema,
+> = z.infer<T>;
+
+
+# --- END OF FILE: src/modules/attribute/domain/attribute.schema.ts ---
+
+//  src/modules/attribute/domain/from-create.schema.ts
+import { z } from "zod";
+import { AttributeValueCreateSchema } from "./attribute-value.schema";
+import { AttributeCreateSchema } from "./attribute.schema";
+
+export const AttributeRelationCreateFormSchema = z.object({
+  attributeData: AttributeCreateSchema,
+  valueListData: z.array(AttributeValueCreateSchema),
+});
+
+export type AttributeRelationCreateForm = z.infer<
+  typeof AttributeRelationCreateFormSchema
+>;
+
+
+# --- END OF FILE: src/modules/attribute/domain/from-create.schema.ts ---
+
+//  src/modules/attribute/domain/attribute-value.schema.ts
+import { jsonString } from "@/shared/lib/zod";
+import { z } from "zod";
+
+export const AttributeValueCreateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  value: z.string().min(1, "Value is required"),
+  rank: z.number().default(0),
+  metadata: jsonString,
+});
+
+export type AttributeValueFormDefaultValue<
+  T extends z.ZodTypeAny = typeof AttributeValueCreateSchema,
+> = z.infer<T>;
+
+
+# --- END OF FILE: src/modules/attribute/domain/attribute-value.schema.ts ---
+
+//  src/modules/attribute/domain/api.type.ts
+import { AttributeFormDefaultValues } from "./attribute.schema";
+import { AttributeValueFormDefaultValue } from "./attribute-value.schema";
+import { AttributeRelationCreateForm } from "./from-create.schema";
+import {
+  AttributeRelationType,
+  AttributeType,
+  AttributeValueType,
+} from "./type";
+
+export type AttributeListParams = {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  order?: string;
+  created_at?: string;
+  updated_at?: string;
+  name?: string;
+  handle?: string;
+};
+
+type MetadataResponse = {
+  count: number;
+  offset: number;
+  limit: number;
+};
+
+export type AttributeResponse = {
+  attributeData: AttributeType;
+};
+
+export type AttributeValueListResponse = {
+  valueListData: AttributeValueType[];
+};
+
+export type AttributeRelationResponse = AttributeResponse &
+  AttributeValueListResponse;
+
+export type AttributeListResponse = MetadataResponse & {
+  attributeList: AttributeType[];
+};
+
+export type AttributeRelationListResponse = MetadataResponse & {
+  attributeList: AttributeRelationType[];
+};
+
+// Payload
+export type AttributeCreatePayload = AttributeFormDefaultValues;
+export type AttributeValueCreatePayload = AttributeValueFormDefaultValue;
+
+export type AttributeRelationCreatePayload = AttributeRelationCreateForm;
+
+
+# --- END OF FILE: src/modules/attribute/domain/api.type.ts ---
+
+//  src/modules/attribute/service/service.ts
+import { MedusaContext, MedusaService } from "@medusajs/framework/utils";
+import AttributeSchema from "../models/attribute";
+import AttributeValueSchema from "../models/attribute-value";
+import { FindConfig } from "@medusajs/framework/types";
+import { Context } from "vm";
+
+class AttributeModuleService extends MedusaService({
+  Attribute: AttributeSchema,
+  AttributeValue: AttributeValueSchema,
+}) {
+  // @ts-ignore
+  async retrieveAttribute(
+    id: string,
+
+    config?: FindConfig<any> | undefined,
+
+    @MedusaContext() sharedContext?: Context | undefined,
+  ) {
+    const attribute = await super.retrieveAttribute(id, config, sharedContext);
+    console.log("output_log: CUSTOM M =>>>", attribute);
+
+    return attribute;
+  }
+}
+
+export default AttributeModuleService;
+
+
+# --- END OF FILE: src/modules/attribute/service/service.ts ---
+
+//  src/modules/attribute/interface.client.ts
+"use client";
+
+export { useAttributeListWithValueListQuery } from "./models/query/use-attribute.query";
+
+export { AttributeFormCreate } from "./ui/form/attribute-form-create";
+
+export { AttributeFormUpdate } from "./ui/form/attribute-form-update";
+
+
+# --- END OF FILE: src/modules/attribute/interface.client.ts ---
+
+//  src/modules/attribute/tool/metadata.ts
+export const getMetadata = (metadata: string | undefined) => {
+  return metadata ? JSON.parse(metadata) : {};
+};
+
+
+# --- END OF FILE: src/modules/attribute/tool/metadata.ts ---
+

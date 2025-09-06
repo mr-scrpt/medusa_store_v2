@@ -1,4 +1,4 @@
-// src/admin/api/attribute.api.ts
+//  src/modules/attribute/api/endpoint.api.ts
 import { sdk } from "@/shared/lib/medusa";
 import {
   AttributeListParams,

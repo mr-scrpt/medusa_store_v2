@@ -1,3 +1,4 @@
+//  src/modules/attribute/domain/attribute.schema.ts
 import { jsonString } from "@/shared/lib/zod";
 import { AttributeFieldType } from "./type";
 import { z } from "zod";

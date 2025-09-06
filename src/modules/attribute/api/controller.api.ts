@@ -5,13 +5,17 @@ import { AttributeRelationCreatePayload } from "../domain/api.type";
 
 export async function getAttribute(req: MedusaRequest, res: MedusaResponse) {
   const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
-  const attribute = await attributeModuleService.retrieveAttribute(
+
+  const result = await attributeModuleService.retrieveAttribute(
     req.params.id,
     req.retrieveConfig,
   );
-  res.status(200).json({ attribute });
-}
+  console.log("output_log: RE =>>>", result);
 
+  const { attributeData, valueListData } = result;
+
+  res.status(200).json({ attributeData, valueListData });
+}
 export async function listAttributes(req: MedusaRequest, res: MedusaResponse) {
   const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
   const [attributeList, count] =

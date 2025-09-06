@@ -18,6 +18,7 @@
                       "});",
                       "",
                       "const res = pm.response.json();",
+                      "// The 'create' response is not transformed, so we check for 'attribute' and 'values'",
                       "if (res.attribute && res.attribute.id) {",
                       "    pm.collectionVariables.set(\"attribute_id\", res.attribute.id);",
                       "    console.log(`Saved attribute_id: ${res.attribute.id}`);",
@@ -37,7 +38,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Fabric\",\n        \"handle\": \"fabric-test\",\n        \"type\": \"multi\",\n        \"filterable\": true,\n        \"metadata\": \"{\\\"source\\\": \\\"postman_test\\\"}\"\n    },\n    \"valueListData\": [\n        {\n            \"name\": \"Silk\",\n            \"value\": \"Silk\",\n            \"rank\": 1,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        },\n        {\n            \"name\": \"Linen\",\n            \"value\": \"Linen\",\n            \"rank\": 0,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        }\n    ]\n}"
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Fabric\",\n        \"handle\": \"fabric-test-new\",\n        \"type\": \"multi\",\n        \"filterable\": true,\n        \"metadata\": \"{\\\"source\\\": \\\"postman_test\\\"}\"\n    },\n    \"valueListData\": [\n        {\n            \"name\": \"Silk\",\n            \"value\": \"Silk\",\n            \"rank\": 1,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        },\n        {\n            \"name\": \"Linen\",\n            \"value\": \"Linen\",\n            \"rank\": 0,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        }\n    ]\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/attribute",
@@ -141,7 +142,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{base_url}}/admin/attribute?order=-name&limit=10&fields=values.*",
+                  "raw": "{{base_url}}/admin/attribute?order=-name&limit=10&fields=*valueList",
                   "host": ["{{base_url}}"],
                   "path": ["admin", "attribute"],
                   "query": [
@@ -155,7 +156,7 @@
                     },
                     {
                       "key": "fields",
-                      "value": "values.*"
+                      "value": "*valueList"
                     }
                   ]
                 }
@@ -180,7 +181,8 @@
                       "",
                       "const res = pm.response.json();",
                       "if (res.attributeList && res.attributeList.length > 0) {",
-                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    // The response is now flat, so we get the ID from attributeData",
+                      "    const firstAttributeId = res.attributeList[0].attributeData.id;",
                       "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
                       "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
                       "} else {",
@@ -232,14 +234,14 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Response contains attribute object\", () => {",
+                      "pm.test(\"Response contains attributeData object\", () => {",
                       "    const res = pm.response.json();",
-                      "    pm.expect(res.attribute).to.be.an('object');",
+                      "    pm.expect(res.attributeData).to.be.an('object');",
                       "});",
                       "",
-                      "pm.test(\"Attribute includes 'values' array\", () => {",
+                      "pm.test(\"Response includes 'valueListData' array\", () => {",
                       "    const res = pm.response.json();",
-                      "    pm.expect(res.attribute.values).to.be.an('array');",
+                      "    pm.expect(res.valueListData).to.be.an('array');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -250,13 +252,13 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}?fields=values.*",
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}?fields=*valueList",
                   "host": ["{{base_url}}"],
                   "path": ["admin", "attribute", "{{attribute_id}}"],
                   "query": [
                     {
                       "key": "fields",
-                      "value": "values.*"
+                      "value": "*valueList"
                     }
                   ]
                 }
@@ -307,7 +309,7 @@
                       "",
                       "const res = pm.response.json();",
                       "if (res.attributeList && res.attributeList.length > 0) {",
-                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    const firstAttributeId = res.attributeList[0].attributeData.id;",
                       "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
                       "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
                       "} else {",
@@ -375,7 +377,7 @@
                       "",
                       "const res = pm.response.json();",
                       "if (res.attributeList && res.attributeList.length > 0) {",
-                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    const firstAttributeId = res.attributeList[0].attributeData.id;",
                       "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
                       "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
                       "} else {",

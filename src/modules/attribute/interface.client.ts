@@ -1,3 +1,4 @@
+//  src/modules/attribute/interface.client.ts
 "use client";
 
 export { useAttributeListWithValueListQuery } from "./models/query/use-attribute.query";

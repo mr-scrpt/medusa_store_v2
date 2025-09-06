@@ -1,3 +1,4 @@
+//  src/modules/attribute/models/attribute.ts
 import { model } from "@medusajs/framework/utils";
 import { AttributeFieldType } from "../domain/type";
 import AttributeValueSchema from "./attribute-value";
@@ -9,7 +10,7 @@ const AttributeSchema = model.define("attribute", {
   type: model.enum(AttributeFieldType),
   filterable: model.boolean().default(false),
   metadata: model.json().nullable(),
-  values: model.hasMany(() => AttributeValueSchema, {
+  valueList: model.hasMany(() => AttributeValueSchema, {
     foreignKey: "attribute_id",
   }),
 });

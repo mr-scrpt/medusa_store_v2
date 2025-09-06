@@ -1,3 +1,4 @@
+//  src/modules/attribute/ui/form/attribute-form-create.tsx
 import { Container, Heading } from "@medusajs/ui";
 import { AttributeFrom } from ".";
 import { useAttributeCreateHandler } from "./handler/use-attribute-create.handler";

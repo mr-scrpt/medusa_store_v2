@@ -1,3 +1,4 @@
+//  src/modules/attribute/ui/form/type.ts
 import { ComponentProps } from "react";
 
 export type AttributeFormDefaultProps = ComponentProps<"div"> & {

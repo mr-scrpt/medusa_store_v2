@@ -1,3 +1,4 @@
+//  src/modules/attribute/domain/from-create.schema.ts
 import { z } from "zod";
 import { AttributeValueCreateSchema } from "./attribute-value.schema";
 import { AttributeCreateSchema } from "./attribute.schema";

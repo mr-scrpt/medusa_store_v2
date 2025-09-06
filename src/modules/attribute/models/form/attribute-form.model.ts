@@ -1,3 +1,4 @@
+//  src/modules/attribute/models/form/attribute-form.model.ts
 import { combineDefaultSchemas } from "@/shared/lib/react-hook-form";
 import { DefaultValues } from "react-hook-form";
 import { AttributeValueFormDefaultValue } from "../../domain/attribute-value.schema";

@@ -1,3 +1,4 @@
+//  src/modules/attribute/models/attribute-value.ts
 import { model } from "@medusajs/framework/utils";
 import AttributeSchema from "./attribute";
 

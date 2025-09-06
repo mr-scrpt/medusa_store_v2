@@ -1,3 +1,4 @@
+//  src/modules/attribute/ui/form/attribute-form-update.tsx
 import { Container, Heading } from "@medusajs/ui";
 import { AttributeFrom } from ".";
 import { useAttributeFormUpdate } from "./hook/use-attribute-form-update";

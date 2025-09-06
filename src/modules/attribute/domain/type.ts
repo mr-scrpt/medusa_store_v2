@@ -1,3 +1,4 @@
+//  src/modules/attribute/domain/type.ts
 import { InferTypeOf } from "@medusajs/framework/types";
 import AttributeSchema from "../models/attribute";
 import AttributeValueSchema from "../models/attribute-value";

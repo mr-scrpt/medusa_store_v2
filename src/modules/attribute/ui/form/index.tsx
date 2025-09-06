@@ -1,3 +1,4 @@
+//  src/modules/attribute/ui/form/index.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Spinner } from "@medusajs/icons";
 import { Button, Label, Text } from "@medusajs/ui";

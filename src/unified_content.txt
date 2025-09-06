@@ -1,0 +1,4763 @@
+// ./shared/lib/zod.ts
+import { z } from "zod";
+
+export const jsonString = z
+  .string()
+  .optional()
+  .refine(
+    (val) => {
+      if (!val || val.trim() === "") {
+        return true;
+      }
+      try {
+        JSON.parse(val);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    { message: "Invalid JSON format" },
+  );
+
+
+---
+
+
+// ./shared/lib/react.tsx
+"use client";
+import {
+  Context,
+  createContext,
+  useContext,
+  startTransition,
+  useEffect,
+  useState,
+  ReactNode,
+  Children,
+  isValidElement,
+  createElement,
+  useMemo,
+  useRef,
+} from "react";
+
+export function useStrictContext<T>(context: Context<T | null>) {
+  const value = useContext(context);
+  if (value === null) throw new Error("Strict context not passed");
+  return value as T;
+}
+
+export function createStrictContext<T>() {
+  return createContext<T | null>(null);
+}
+
+export function useAppearanceDelay(
+  show?: boolean,
+  options = {} as {
+    defaultValue?: boolean;
+    appearenceDelay?: number;
+    minDisplay?: number;
+  },
+) {
+  const {
+    minDisplay = 500,
+    defaultValue = false,
+    appearenceDelay = 200,
+  } = options;
+
+  const [delayedShow, setDelayedShow] = useState(defaultValue);
+
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(() => {
+        startTransition(() => setDelayedShow(true));
+      }, appearenceDelay);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        startTransition(() => setDelayedShow(false));
+      }, minDisplay);
+      return () => clearTimeout(timer);
+    }
+  }, [appearenceDelay, show, minDisplay]);
+
+  return delayedShow;
+}
+
+export function ComposeChildren({ children }: { children: ReactNode }) {
+  const array = Children.toArray(children);
+  const last = array.pop();
+  return (
+    <>
+      {array.reduceRight(
+        (child, element) =>
+          isValidElement(element)
+            ? createElement(element.type, element.props, child)
+            : child,
+        last,
+      )}
+    </>
+  );
+}
+
+type Fn<ARGS extends any[], R> = (...args: ARGS) => R;
+
+export function useEventCallback<A extends any[], R>(fn: Fn<A, R>): Fn<A, R> {
+  const ref = useRef<Fn<A, R>>(fn);
+  useEffect(() => {
+    ref.current = fn;
+  });
+  return useMemo(
+    () =>
+      (...args: A): R => {
+        const { current } = ref;
+        return current(...args);
+      },
+    [],
+  );
+}
+
+
+---
+
+
+// ./shared/lib/react-hook-form.tsx
+import { ComponentProps } from "react";
+
+export const combineDefaultSchemas = <T extends Record<string, any>>(schemas: {
+  [K in keyof T]: T[K];
+}): T => {
+  return { ...schemas } as T;
+};
+
+export interface HandlerFormBaseProps {
+  callbackUrl?: string;
+  onSuccess?: () => void;
+  onError?: () => void;
+}
+
+export type ButtonSubmitProps = ComponentProps<"button"> & {
+  isPending?: boolean;
+  submitText: string;
+};
+
+
+---
+
+
+// ./shared/lib/utils.ts
+"use client";
+
+export const cleanObject = (obj: any) => {
+  const newObj = {};
+  for (const key in obj) {
+    if (obj[key] !== null && obj[key] !== undefined) {
+      newObj[key] = obj[key];
+    }
+  }
+  return newObj;
+};
+
+
+---
+
+
+// ./shared/lib/react-router.ts
+import { useSearchParams } from "react-router-dom";
+import { cleanObject } from "./utils";
+
+type QueryParams<T extends string> = {
+  [key in T]: string | undefined;
+};
+
+export function useQueryParams<T extends string>(
+  keys: T[],
+  prefix?: string,
+): QueryParams<T> {
+  const [params] = useSearchParams();
+
+  // Use a type assertion to initialize the result
+  const result = {} as QueryParams<T>;
+
+  keys.forEach((key) => {
+    const prefixedKey = prefix ? `${prefix}_${key}` : key;
+    const value = params.get(prefixedKey) || undefined;
+
+    result[key] = value;
+  });
+
+  return result;
+}
+
+export const createQueryParams = ({
+  query,
+  relations,
+}: {
+  query: Record<string, any>;
+  relations?: Record<string, any>;
+}) => {
+  const combinedParams = {
+    ...cleanObject({ ...query, ...relations }),
+  };
+
+  return new URLSearchParams(combinedParams);
+};
+
+export const createQueryParamsString = ({
+  query,
+  relations,
+}: {
+  query: Record<string, any>;
+  relations?: Record<string, any>;
+}) => createQueryParams({ query, relations }).toString();
+
+
+---
+
+
+// import { useState, useMemo, useEffect } from "react";
+// import { useSearchParams } from "react-router-dom";
+//
+// import {
+//   ColumnDef,
+//   OnChangeFn,
+//   PaginationState,
+//   Row,
+//   RowSelectionState,
+//   getCoreRowModel,
+//   getExpandedRowModel,
+//   getPaginationRowModel,
+//   useReactTable,
+// } from "@tanstack/react-table";
+//
+// type UseDataTableProps<TData> = {
+//   data?: TData[];
+//   columns: ColumnDef<TData, any>[];
+//   count?: number;
+//   pageSize?: number;
+//   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
+//   rowSelection?: {
+//     state: RowSelectionState;
+//     updater: OnChangeFn<RowSelectionState>;
+//   };
+//   enablePagination?: boolean;
+//   enableExpandableRows?: boolean;
+//   getRowId?: (original: TData, index: number) => string;
+//   getSubRows?: (original: TData) => TData[];
+//   meta?: Record<string, unknown>;
+//   prefix?: string;
+// };
+//
+// export const useDataTable = <TData>({
+//   data = [],
+//   columns,
+//   count = 0,
+//   pageSize: _pageSize = 20,
+//   enablePagination = true,
+//   enableRowSelection = false,
+//   enableExpandableRows = false,
+//   rowSelection: _rowSelection,
+//   getSubRows,
+//   getRowId,
+//   meta,
+//   prefix,
+// }: UseDataTableProps<TData>) => {
+//   const [searchParams, setSearchParams] = useSearchParams();
+//   const offsetKey = `${prefix ? `${prefix}_` : ""}offset`;
+//   const offset = searchParams.get(offsetKey);
+//
+//   const [{ pageIndex, pageSize }, setPagination] = useState<PaginationState>({
+//     pageIndex: offset ? Math.ceil(Number(offset) / _pageSize) : 0,
+//     pageSize: _pageSize,
+//   });
+//   const pagination = useMemo(
+//     () => ({
+//       pageIndex,
+//       pageSize,
+//     }),
+//     [pageIndex, pageSize],
+//   );
+//   const [localRowSelection, setLocalRowSelection] = useState({});
+//   const rowSelection = _rowSelection?.state ?? localRowSelection;
+//   const setRowSelection = _rowSelection?.updater ?? setLocalRowSelection;
+//
+//   useEffect(() => {
+//     if (!enablePagination) {
+//       return;
+//     }
+//
+//     const index = offset ? Math.ceil(Number(offset) / _pageSize) : 0;
+//
+//     if (index === pageIndex) {
+//       return;
+//     }
+//
+//     setPagination((prev) => ({
+//       ...prev,
+//       pageIndex: index,
+//     }));
+//   }, [offset, enablePagination, _pageSize, pageIndex]);
+//
+//   const onPaginationChange = (
+//     updater: (old: PaginationState) => PaginationState,
+//   ) => {
+//     const state = updater(pagination);
+//     const { pageIndex, pageSize } = state;
+//
+//     setSearchParams((prev) => {
+//       if (!pageIndex) {
+//         prev.delete(offsetKey);
+//         return prev;
+//       }
+//
+//       const newSearch = new URLSearchParams(prev);
+//       newSearch.set(offsetKey, String(pageIndex * pageSize));
+//
+//       return newSearch;
+//     });
+//
+//     setPagination(state);
+//     return state;
+//   };
+//
+//   const table = useReactTable({
+//     data,
+//     columns,
+//     state: {
+//       rowSelection: rowSelection, // We always pass a selection state to the table even if it's not enabled
+//       pagination: enablePagination ? pagination : undefined,
+//     },
+//     pageCount: Math.ceil((count ?? 0) / pageSize),
+//     enableRowSelection,
+//     getRowId,
+//     getSubRows,
+//     onRowSelectionChange: enableRowSelection ? setRowSelection : undefined,
+//     onPaginationChange: enablePagination
+//       ? (onPaginationChange as OnChangeFn<PaginationState>)
+//       : undefined,
+//     getCoreRowModel: getCoreRowModel(),
+//     getPaginationRowModel: enablePagination
+//       ? getPaginationRowModel()
+//       : undefined,
+//     getExpandedRowModel: enableExpandableRows
+//       ? getExpandedRowModel()
+//       : undefined,
+//     manualPagination: enablePagination ? true : undefined,
+//     meta,
+//   });
+//
+//   return { table };
+// };
+
+
+---
+
+
+// ./shared/lib/medusa.ts
+import Medusa from "@medusajs/js-sdk";
+
+export const backendUrl = __BACKEND_URL__ ?? "/";
+
+export const sdk = new Medusa({
+  baseUrl: backendUrl,
+  auth: {
+    type: "session",
+  },
+});
+
+// useful when you want to call the BE from the console and try things out quickly
+if (typeof window !== "undefined") {
+  (window as any).__sdk = sdk;
+}
+
+
+---
+
+
+// ./shared/ui/kit/json-view-section/json-view-section.tsx
+import {
+  ArrowUpRightOnBox,
+  Check,
+  PencilSquare,
+  SquareTwoStack,
+  TriangleDownMini,
+  XMarkMini,
+} from "@medusajs/icons";
+import {
+  Badge,
+  Button,
+  Container,
+  Drawer,
+  Heading,
+  IconButton,
+  Kbd,
+  Textarea,
+} from "@medusajs/ui";
+import Primitive from "@uiw/react-json-view";
+import { CSSProperties, MouseEvent, Suspense, useMemo, useState } from "react";
+
+// --- ИЗМЕНЕНИЯ В ТИПАХ ---
+export type JsonViewSectionProps = {
+  data: string | null | undefined; // Теперь data - это строка
+  title?: string;
+  editable?: boolean;
+  onSave?: (value: string) => void; // onSave теперь тоже работает со строкой
+};
+
+export const JsonViewSection = ({
+  data,
+  title = "JSON",
+  editable = false,
+  onSave,
+}: JsonViewSectionProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Эта логика преобразует входящую строку в объект для красивого отображения
+  const processedData = useMemo(() => {
+    if (!data || typeof data !== "string" || data.trim() === "") {
+      return {};
+    }
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      // Если парсинг не удался, отображаем ошибку или исходную строку
+      return { error: "Invalid JSON format", value: data };
+    }
+  }, [data]);
+
+  // Эта функция готовит строку для редактирования в Textarea
+  const getEditableString = () => {
+    if (!data) {
+      return "";
+    }
+    try {
+      // Пытаемся красиво отформатировать JSON
+      const parsed = JSON.parse(data);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      // Если это не JSON, возвращаем как есть
+      return data;
+    }
+  };
+
+  const handleStartEdit = () => {
+    setEditValue(getEditableString());
+    setIsEditing(true);
+    setValidationError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditValue("");
+    setValidationError(null);
+  };
+
+  const handleSave = () => {
+    try {
+      // Проверяем валидность JSON, если строка не пустая
+      if (editValue.trim() !== "") {
+        JSON.parse(editValue);
+      }
+      // Если валидация прошла, вызываем onSave с новой строкой
+      onSave?.(editValue);
+      setIsEditing(false);
+      setValidationError(null);
+    } catch (error) {
+      setValidationError("Invalid JSON format");
+    }
+  };
+
+  const numberOfKeys = Object.keys(processedData).length;
+
+  return (
+    <Container className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center gap-x-4">
+        <Heading level="h2">{title}</Heading>
+        <Badge size="2xsmall" rounded="full">
+          {numberOfKeys} keys
+        </Badge>
+        {editable && (
+          <Badge size="2xsmall" color="green" rounded="full">
+            Editable
+          </Badge>
+        )}
+      </div>
+      <div className="flex items-center gap-x-2">
+        <Drawer>
+          <Drawer.Trigger asChild>
+            <IconButton
+              size="small"
+              variant="transparent"
+              className="text-ui-fg-muted hover:text-ui-fg-subtle"
+            >
+              <ArrowUpRightOnBox />
+            </IconButton>
+          </Drawer.Trigger>
+          <Drawer.Content className="bg-ui-contrast-bg-base text-ui-code-fg-subtle !shadow-elevation-commandbar overflow-hidden border border-none max-md:inset-x-2 max-md:max-w-[calc(100%-16px)]">
+            <div className="bg-ui-code-bg-base flex items-center justify-between px-6 py-4">
+              <div className="flex items-center gap-x-4">
+                <Drawer.Title asChild>
+                  <Heading className="text-ui-contrast-fg-primary">
+                    {title}
+                  </Heading>
+                </Drawer.Title>
+                <Badge
+                  size="2xsmall"
+                  rounded="full"
+                  className="text-ui-fg-subtle"
+                >
+                  <span className="text-ui-fg-subtle">{numberOfKeys} keys</span>
+                </Badge>
+                {isEditing && (
+                  <Badge size="2xsmall" color="orange" rounded="full">
+                    Editing
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-x-2">
+                {editable && !isEditing && (
+                  <IconButton
+                    size="small"
+                    variant="transparent"
+                    className="text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary"
+                    onClick={handleStartEdit}
+                  >
+                    <PencilSquare />
+                  </IconButton>
+                )}
+                {isEditing && (
+                  <>
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancel
+                    </Button>
+                    <Button size="small" onClick={handleSave}>
+                      Save
+                    </Button>
+                  </>
+                )}
+                <Kbd className="bg-ui-contrast-bg-subtle border-ui-contrast-border-base text-ui-contrast-fg-secondary">
+                  esc
+                </Kbd>
+                <Drawer.Close asChild>
+                  <IconButton
+                    size="small"
+                    variant="transparent"
+                    className="text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary hover:bg-ui-contrast-bg-base-hover active:bg-ui-contrast-bg-base-pressed focus-visible:bg-ui-contrast-bg-base-hover focus-visible:shadow-borders-interactive-with-active"
+                    onClick={handleCancelEdit}
+                  >
+                    <XMarkMini />
+                  </IconButton>
+                </Drawer.Close>
+              </div>
+            </div>
+            <Drawer.Body className="flex flex-1 flex-col overflow-hidden px-[5px] py-0 pb-[5px]">
+              <div className="bg-ui-contrast-bg-subtle flex-1 overflow-auto rounded-b-[4px] rounded-t-lg p-3">
+                {isEditing ? (
+                  <div className="flex flex-col h-full">
+                    <Textarea
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="flex-1 min-h-[300px] font-mono text-sm resize-none"
+                      placeholder="Enter valid JSON..."
+                    />
+                    {validationError && (
+                      <div className="mt-2 text-ui-tag-red-text text-sm">
+                        {validationError}
+                      </div>
+                    )}
+                    <div className="mt-3 flex justify-end gap-x-2">
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel
+                      </Button>
+                      <Button size="small" onClick={handleSave}>
+                        Save Changes
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Suspense
+                    fallback={<div className="flex size-full flex-col"></div>}
+                  >
+                    <div className="relative">
+                      {editable && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <IconButton
+                            size="small"
+                            variant="transparent"
+                            className="bg-ui-contrast-bg-base hover:bg-ui-contrast-bg-base-hover text-ui-contrast-fg-secondary hover:text-ui-contrast-fg-primary"
+                            onClick={handleStartEdit}
+                          >
+                            <PencilSquare />
+                          </IconButton>
+                        </div>
+                      )}
+                      <Primitive
+                        value={processedData}
+                        displayDataTypes={false}
+                        style={
+                          {
+                            "--w-rjv-font-family": "Roboto Mono, monospace",
+                            "--w-rjv-line-color": "var(--contrast-border-base)",
+                            "--w-rjv-curlybraces-color":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-brackets-color":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-key-string": "var(--contrast-fg-primary)",
+                            "--w-rjv-info-color":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-type-string-color":
+                              "var(--tag-green-icon)",
+                            "--w-rjv-quotes-string-color":
+                              "var(--tag-green-icon)",
+                            "--w-rjv-type-boolean-color":
+                              "var(--tag-orange-icon)",
+                            "--w-rjv-type-int-color": "var(--tag-orange-icon)",
+                            "--w-rjv-type-float-color":
+                              "var(--tag-orange-icon)",
+                            "--w-rjv-type-bigint-color":
+                              "var(--tag-orange-icon)",
+                            "--w-rjv-key-number":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-arrow-color":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-copied-color":
+                              "var(--contrast-fg-secondary)",
+                            "--w-rjv-copied-success-color":
+                              "var(--contrast-fg-primary)",
+                            "--w-rjv-colon-color": "var(--contrast-fg-primary)",
+                            "--w-rjv-ellipsis-color":
+                              "var(--contrast-fg-secondary)",
+                          } as CSSProperties
+                        }
+                        collapsed={1}
+                      >
+                        <Primitive.Quote render={() => <span />} />
+                        <Primitive.Null
+                          render={() => (
+                            <span className="text-ui-tag-red-icon">null</span>
+                          )}
+                        />
+                        <Primitive.Undefined
+                          render={() => (
+                            <span className="text-ui-tag-blue-icon">
+                              undefined
+                            </span>
+                          )}
+                        />
+                        <Primitive.CountInfo
+                          render={(_props, { value }) => {
+                            return (
+                              <span className="text-ui-contrast-fg-secondary ml-2">
+                                {Object.keys(value as object).length} items
+                              </span>
+                            );
+                          }}
+                        />
+                        <Primitive.Arrow>
+                          <TriangleDownMini className="text-ui-contrast-fg-secondary -ml-[0.5px]" />
+                        </Primitive.Arrow>
+                        <Primitive.Colon>
+                          <span className="mr-1">:</span>
+                        </Primitive.Colon>
+                        <Primitive.Copied
+                          render={({ style }, { value }) => {
+                            return <Copied style={style} value={value} />;
+                          }}
+                        />
+                      </Primitive>
+                    </div>
+                  </Suspense>
+                )}
+              </div>
+            </Drawer.Body>
+          </Drawer.Content>
+        </Drawer>
+      </div>
+    </Container>
+  );
+};
+
+type CopiedProps = {
+  style?: CSSProperties;
+  value: object | undefined;
+};
+
+const Copied = ({ style, value }: CopiedProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const handler = (e: MouseEvent<HTMLSpanElement>) => {
+    e.stopPropagation();
+    setCopied(true);
+    if (typeof value === "string") {
+      navigator.clipboard.writeText(value);
+    } else {
+      const json = JSON.stringify(value, null, 2);
+      navigator.clipboard.writeText(json);
+    }
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
+
+  const styl = { whiteSpace: "nowrap", width: "20px" } as CSSProperties;
+
+  if (copied) {
+    return (
+      <span style={{ ...style, ...styl }}>
+        <Check className="text-ui-contrast-fg-primary" />
+      </span>
+    );
+  }
+
+  return (
+    <span style={{ ...style, ...styl }} onClick={handler}>
+      <SquareTwoStack className="text-ui-contrast-fg-secondary" />
+    </span>
+  );
+};
+
+
+---
+
+
+// ./jobs/README.md
+# Custom scheduled jobs
+
+A scheduled job is a function executed at a specified interval of time in the background of your Medusa application.
+
+> Learn more about scheduled jobs in [this documentation](https://docs.medusajs.com/learn/fundamentals/scheduled-jobs).
+
+A scheduled job is created in a TypeScript or JavaScript file under the `src/jobs` directory.
+
+For example, create the file `src/jobs/hello-world.ts` with the following content:
+
+```ts
+import {
+  MedusaContainer
+} from "@medusajs/framework/types";
+
+export default async function myCustomJob(container: MedusaContainer) {
+  const productService = container.resolve("product")
+
+  const products = await productService.listAndCountProducts();
+
+  // Do something with the products
+}
+
+export const config = {
+  name: "daily-product-report",
+  schedule: "0 0 * * *", // Every day at midnight
+};
+```
+
+A scheduled job file must export:
+
+- The function to be executed whenever it’s time to run the scheduled job.
+- A configuration object defining the job. It has three properties:
+  - `name`: a unique name for the job.
+  - `schedule`: a [cron expression](https://crontab.guru/).
+  - `numberOfExecutions`: an optional integer, specifying how many times the job will execute before being removed
+
+The `handler` is a function that accepts one parameter, `container`, which is a `MedusaContainer` instance used to resolve services.
+
+
+---
+
+
+// ./subscribers/README.md
+# Custom subscribers
+
+Subscribers handle events emitted in the Medusa application.
+
+> Learn more about Subscribers in [this documentation](https://docs.medusajs.com/learn/fundamentals/events-and-subscribers).
+
+The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.
+
+For example, create the file `src/subscribers/product-created.ts` with the following content:
+
+```ts
+import {
+  type SubscriberConfig,
+} from "@medusajs/framework"
+
+// subscriber function
+export default async function productCreateHandler() {
+  console.log("A product was created")
+}
+
+// subscriber config
+export const config: SubscriberConfig = {
+  event: "product.created",
+}
+```
+
+A subscriber file must export:
+
+- The subscriber function that is an asynchronous function executed whenever the associated event is triggered.
+- A configuration object defining the event this subscriber is listening to.
+
+## Subscriber Parameters
+
+A subscriber receives an object having the following properties:
+
+- `event`: An object holding the event's details. It has a `data` property, which is the event's data payload.
+- `container`: The Medusa container. Use it to resolve modules' main services and other registered resources.
+
+```ts
+import type {
+  SubscriberArgs,
+  SubscriberConfig,
+} from "@medusajs/framework"
+
+export default async function productCreateHandler({
+  event: { data },
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  const productId = data.id
+
+  const productModuleService = container.resolve("product")
+
+  const product = await productModuleService.retrieveProduct(productId)
+
+  console.log(`The product ${product.title} was created`)
+}
+
+export const config: SubscriberConfig = {
+  event: "product.created",
+}
+```
+
+
+---
+
+
+// ./scripts/README.md
+# Custom CLI Script
+
+A custom CLI script is a function to execute through Medusa's CLI tool. This is useful when creating custom Medusa tooling to run as a CLI tool.
+
+> Learn more about custom CLI scripts in [this documentation](https://docs.medusajs.com/learn/fundamentals/custom-cli-scripts).
+
+## How to Create a Custom CLI Script?
+
+To create a custom CLI script, create a TypeScript or JavaScript file under the `src/scripts` directory. The file must default export a function.
+
+For example, create the file `src/scripts/my-script.ts` with the following content:
+
+```ts title="src/scripts/my-script.ts"
+import { 
+  ExecArgs,
+} from "@medusajs/framework/types"
+
+export default async function myScript ({
+  container
+}: ExecArgs) {
+  const productModuleService = container.resolve("product")
+
+  const [, count] = await productModuleService.listAndCountProducts()
+
+  console.log(`You have ${count} product(s)`)
+}
+```
+
+The function receives as a parameter an object having a `container` property, which is an instance of the Medusa Container. Use it to resolve resources in your Medusa application.
+
+---
+
+## How to Run Custom CLI Script?
+
+To run the custom CLI script, run the `exec` command:
+
+```bash
+npx medusa exec ./src/scripts/my-script.ts
+```
+
+---
+
+## Custom CLI Script Arguments
+
+Your script can accept arguments from the command line. Arguments are passed to the function's object parameter in the `args` property.
+
+For example:
+
+```ts
+import { ExecArgs } from "@medusajs/framework/types"
+
+export default async function myScript ({
+  args
+}: ExecArgs) {
+  console.log(`The arguments you passed: ${args}`)
+}
+```
+
+Then, pass the arguments in the `exec` command after the file path:
+
+```bash
+npx medusa exec ./src/scripts/my-script.ts arg1 arg2
+```
+
+
+---
+
+
+// ./scripts/seed.ts
+import { CreateInventoryLevelInput, ExecArgs } from "@medusajs/framework/types";
+import {
+  ContainerRegistrationKeys,
+  Modules,
+  ProductStatus,
+} from "@medusajs/framework/utils";
+import {
+  createApiKeysWorkflow,
+  createInventoryLevelsWorkflow,
+  createProductCategoriesWorkflow,
+  createProductsWorkflow,
+  createRegionsWorkflow,
+  createSalesChannelsWorkflow,
+  createShippingOptionsWorkflow,
+  createShippingProfilesWorkflow,
+  createStockLocationsWorkflow,
+  createTaxRegionsWorkflow,
+  linkSalesChannelsToApiKeyWorkflow,
+  linkSalesChannelsToStockLocationWorkflow,
+  updateStoresWorkflow,
+} from "@medusajs/medusa/core-flows";
+
+export default async function seedDemoData({ container }: ExecArgs) {
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
+  const link = container.resolve(ContainerRegistrationKeys.LINK);
+  const query = container.resolve(ContainerRegistrationKeys.QUERY);
+  const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT);
+  const salesChannelModuleService = container.resolve(Modules.SALES_CHANNEL);
+  const storeModuleService = container.resolve(Modules.STORE);
+
+  const countries = ["gb", "de", "dk", "se", "fr", "es", "it"];
+
+  logger.info("Seeding store data...");
+  const [store] = await storeModuleService.listStores();
+  let defaultSalesChannel = await salesChannelModuleService.listSalesChannels({
+    name: "Default Sales Channel",
+  });
+
+  if (!defaultSalesChannel.length) {
+    // create the default sales channel
+    const { result: salesChannelResult } = await createSalesChannelsWorkflow(
+      container
+    ).run({
+      input: {
+        salesChannelsData: [
+          {
+            name: "Default Sales Channel",
+          },
+        ],
+      },
+    });
+    defaultSalesChannel = salesChannelResult;
+  }
+
+  await updateStoresWorkflow(container).run({
+    input: {
+      selector: { id: store.id },
+      update: {
+        supported_currencies: [
+          {
+            currency_code: "eur",
+            is_default: true,
+          },
+          {
+            currency_code: "usd",
+          },
+        ],
+        default_sales_channel_id: defaultSalesChannel[0].id,
+      },
+    },
+  });
+  logger.info("Seeding region data...");
+  const { result: regionResult } = await createRegionsWorkflow(container).run({
+    input: {
+      regions: [
+        {
+          name: "Europe",
+          currency_code: "eur",
+          countries,
+          payment_providers: ["pp_system_default"],
+        },
+      ],
+    },
+  });
+  const region = regionResult[0];
+  logger.info("Finished seeding regions.");
+
+  logger.info("Seeding tax regions...");
+  await createTaxRegionsWorkflow(container).run({
+    input: countries.map((country_code) => ({
+      country_code,
+      provider_id: "tp_system"
+    })),
+  });
+  logger.info("Finished seeding tax regions.");
+
+  logger.info("Seeding stock location data...");
+  const { result: stockLocationResult } = await createStockLocationsWorkflow(
+    container
+  ).run({
+    input: {
+      locations: [
+        {
+          name: "European Warehouse",
+          address: {
+            city: "Copenhagen",
+            country_code: "DK",
+            address_1: "",
+          },
+        },
+      ],
+    },
+  });
+  const stockLocation = stockLocationResult[0];
+
+  await link.create({
+    [Modules.STOCK_LOCATION]: {
+      stock_location_id: stockLocation.id,
+    },
+    [Modules.FULFILLMENT]: {
+      fulfillment_provider_id: "manual_manual",
+    },
+  });
+
+  logger.info("Seeding fulfillment data...");
+  const shippingProfiles = await fulfillmentModuleService.listShippingProfiles({
+    type: "default"
+  })
+  let shippingProfile = shippingProfiles.length ? shippingProfiles[0] : null
+
+  if (!shippingProfile) {
+    const { result: shippingProfileResult } =
+    await createShippingProfilesWorkflow(container).run({
+      input: {
+        data: [
+          {
+            name: "Default Shipping Profile",
+            type: "default",
+          },
+        ],
+      },
+    });
+    shippingProfile = shippingProfileResult[0];
+  }
+
+  const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
+    name: "European Warehouse delivery",
+    type: "shipping",
+    service_zones: [
+      {
+        name: "Europe",
+        geo_zones: [
+          {
+            country_code: "gb",
+            type: "country",
+          },
+          {
+            country_code: "de",
+            type: "country",
+          },
+          {
+            country_code: "dk",
+            type: "country",
+          },
+          {
+            country_code: "se",
+            type: "country",
+          },
+          {
+            country_code: "fr",
+            type: "country",
+          },
+          {
+            country_code: "es",
+            type: "country",
+          },
+          {
+            country_code: "it",
+            type: "country",
+          },
+        ],
+      },
+    ],
+  });
+
+  await link.create({
+    [Modules.STOCK_LOCATION]: {
+      stock_location_id: stockLocation.id,
+    },
+    [Modules.FULFILLMENT]: {
+      fulfillment_set_id: fulfillmentSet.id,
+    },
+  });
+
+  await createShippingOptionsWorkflow(container).run({
+    input: [
+      {
+        name: "Standard Shipping",
+        price_type: "flat",
+        provider_id: "manual_manual",
+        service_zone_id: fulfillmentSet.service_zones[0].id,
+        shipping_profile_id: shippingProfile.id,
+        type: {
+          label: "Standard",
+          description: "Ship in 2-3 days.",
+          code: "standard",
+        },
+        prices: [
+          {
+            currency_code: "usd",
+            amount: 10,
+          },
+          {
+            currency_code: "eur",
+            amount: 10,
+          },
+          {
+            region_id: region.id,
+            amount: 10,
+          },
+        ],
+        rules: [
+          {
+            attribute: "enabled_in_store",
+            value: "true",
+            operator: "eq",
+          },
+          {
+            attribute: "is_return",
+            value: "false",
+            operator: "eq",
+          },
+        ],
+      },
+      {
+        name: "Express Shipping",
+        price_type: "flat",
+        provider_id: "manual_manual",
+        service_zone_id: fulfillmentSet.service_zones[0].id,
+        shipping_profile_id: shippingProfile.id,
+        type: {
+          label: "Express",
+          description: "Ship in 24 hours.",
+          code: "express",
+        },
+        prices: [
+          {
+            currency_code: "usd",
+            amount: 10,
+          },
+          {
+            currency_code: "eur",
+            amount: 10,
+          },
+          {
+            region_id: region.id,
+            amount: 10,
+          },
+        ],
+        rules: [
+          {
+            attribute: "enabled_in_store",
+            value: "true",
+            operator: "eq",
+          },
+          {
+            attribute: "is_return",
+            value: "false",
+            operator: "eq",
+          },
+        ],
+      },
+    ],
+  });
+  logger.info("Finished seeding fulfillment data.");
+
+  await linkSalesChannelsToStockLocationWorkflow(container).run({
+    input: {
+      id: stockLocation.id,
+      add: [defaultSalesChannel[0].id],
+    },
+  });
+  logger.info("Finished seeding stock location data.");
+
+  logger.info("Seeding publishable API key data...");
+  const { result: publishableApiKeyResult } = await createApiKeysWorkflow(
+    container
+  ).run({
+    input: {
+      api_keys: [
+        {
+          title: "Webshop",
+          type: "publishable",
+          created_by: "",
+        },
+      ],
+    },
+  });
+  const publishableApiKey = publishableApiKeyResult[0];
+
+  await linkSalesChannelsToApiKeyWorkflow(container).run({
+    input: {
+      id: publishableApiKey.id,
+      add: [defaultSalesChannel[0].id],
+    },
+  });
+  logger.info("Finished seeding publishable API key data.");
+
+  logger.info("Seeding product data...");
+
+  const { result: categoryResult } = await createProductCategoriesWorkflow(
+    container
+  ).run({
+    input: {
+      product_categories: [
+        {
+          name: "Shirts",
+          is_active: true,
+        },
+        {
+          name: "Sweatshirts",
+          is_active: true,
+        },
+        {
+          name: "Pants",
+          is_active: true,
+        },
+        {
+          name: "Merch",
+          is_active: true,
+        },
+      ],
+    },
+  });
+
+  await createProductsWorkflow(container).run({
+    input: {
+      products: [
+        {
+          title: "Medusa T-Shirt",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "Shirts")!.id,
+          ],
+          description:
+            "Reimagine the feeling of a classic T-shirt. With our cotton T-shirts, everyday essentials no longer have to be ordinary.",
+          handle: "t-shirt",
+          weight: 400,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-back.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-front.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-back.png",
+            },
+          ],
+          options: [
+            {
+              title: "Size",
+              values: ["S", "M", "L", "XL"],
+            },
+            {
+              title: "Color",
+              values: ["Black", "White"],
+            },
+          ],
+          variants: [
+            {
+              title: "S / Black",
+              sku: "SHIRT-S-BLACK",
+              options: {
+                Size: "S",
+                Color: "Black",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "S / White",
+              sku: "SHIRT-S-WHITE",
+              options: {
+                Size: "S",
+                Color: "White",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "M / Black",
+              sku: "SHIRT-M-BLACK",
+              options: {
+                Size: "M",
+                Color: "Black",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "M / White",
+              sku: "SHIRT-M-WHITE",
+              options: {
+                Size: "M",
+                Color: "White",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "L / Black",
+              sku: "SHIRT-L-BLACK",
+              options: {
+                Size: "L",
+                Color: "Black",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "L / White",
+              sku: "SHIRT-L-WHITE",
+              options: {
+                Size: "L",
+                Color: "White",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "XL / Black",
+              sku: "SHIRT-XL-BLACK",
+              options: {
+                Size: "XL",
+                Color: "Black",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "XL / White",
+              sku: "SHIRT-XL-WHITE",
+              options: {
+                Size: "XL",
+                Color: "White",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+          ],
+          sales_channels: [
+            {
+              id: defaultSalesChannel[0].id,
+            },
+          ],
+        },
+        {
+          title: "Medusa Sweatshirt",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "Sweatshirts")!.id,
+          ],
+          description:
+            "Reimagine the feeling of a classic sweatshirt. With our cotton sweatshirt, everyday essentials no longer have to be ordinary.",
+          handle: "sweatshirt",
+          weight: 400,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-front.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-back.png",
+            },
+          ],
+          options: [
+            {
+              title: "Size",
+              values: ["S", "M", "L", "XL"],
+            },
+          ],
+          variants: [
+            {
+              title: "S",
+              sku: "SWEATSHIRT-S",
+              options: {
+                Size: "S",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "M",
+              sku: "SWEATSHIRT-M",
+              options: {
+                Size: "M",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "L",
+              sku: "SWEATSHIRT-L",
+              options: {
+                Size: "L",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "XL",
+              sku: "SWEATSHIRT-XL",
+              options: {
+                Size: "XL",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+          ],
+          sales_channels: [
+            {
+              id: defaultSalesChannel[0].id,
+            },
+          ],
+        },
+        {
+          title: "Medusa Sweatpants",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "Pants")!.id,
+          ],
+          description:
+            "Reimagine the feeling of classic sweatpants. With our cotton sweatpants, everyday essentials no longer have to be ordinary.",
+          handle: "sweatpants",
+          weight: 400,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatpants-gray-front.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatpants-gray-back.png",
+            },
+          ],
+          options: [
+            {
+              title: "Size",
+              values: ["S", "M", "L", "XL"],
+            },
+          ],
+          variants: [
+            {
+              title: "S",
+              sku: "SWEATPANTS-S",
+              options: {
+                Size: "S",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "M",
+              sku: "SWEATPANTS-M",
+              options: {
+                Size: "M",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "L",
+              sku: "SWEATPANTS-L",
+              options: {
+                Size: "L",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "XL",
+              sku: "SWEATPANTS-XL",
+              options: {
+                Size: "XL",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+          ],
+          sales_channels: [
+            {
+              id: defaultSalesChannel[0].id,
+            },
+          ],
+        },
+        {
+          title: "Medusa Shorts",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "Merch")!.id,
+          ],
+          description:
+            "Reimagine the feeling of classic shorts. With our cotton shorts, everyday essentials no longer have to be ordinary.",
+          handle: "shorts",
+          weight: 400,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/shorts-vintage-front.png",
+            },
+            {
+              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/shorts-vintage-back.png",
+            },
+          ],
+          options: [
+            {
+              title: "Size",
+              values: ["S", "M", "L", "XL"],
+            },
+          ],
+          variants: [
+            {
+              title: "S",
+              sku: "SHORTS-S",
+              options: {
+                Size: "S",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "M",
+              sku: "SHORTS-M",
+              options: {
+                Size: "M",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "L",
+              sku: "SHORTS-L",
+              options: {
+                Size: "L",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+            {
+              title: "XL",
+              sku: "SHORTS-XL",
+              options: {
+                Size: "XL",
+              },
+              prices: [
+                {
+                  amount: 10,
+                  currency_code: "eur",
+                },
+                {
+                  amount: 15,
+                  currency_code: "usd",
+                },
+              ],
+            },
+          ],
+          sales_channels: [
+            {
+              id: defaultSalesChannel[0].id,
+            },
+          ],
+        },
+      ],
+    },
+  });
+  logger.info("Finished seeding product data.");
+
+  logger.info("Seeding inventory levels.");
+
+  const { data: inventoryItems } = await query.graph({
+    entity: "inventory_item",
+    fields: ["id"],
+  });
+
+  const inventoryLevels: CreateInventoryLevelInput[] = [];
+  for (const inventoryItem of inventoryItems) {
+    const inventoryLevel = {
+      location_id: stockLocation.id,
+      stocked_quantity: 1000000,
+      inventory_item_id: inventoryItem.id,
+    };
+    inventoryLevels.push(inventoryLevel);
+  }
+
+  await createInventoryLevelsWorkflow(container).run({
+    input: {
+      inventory_levels: inventoryLevels,
+    },
+  });
+
+  logger.info("Finished seeding inventory levels data.");
+}
+
+
+---
+
+
+// ./api/README.md
+# Custom API Routes
+
+An API Route is a REST API endpoint.
+
+An API Route is created in a TypeScript or JavaScript file under the `/src/api` directory of your Medusa application. The file’s name must be `route.ts` or `route.js`.
+
+> Learn more about API Routes in [this documentation](https://docs.medusajs.com/learn/fundamentals/api-routes)
+
+For example, to create a `GET` API Route at `/store/hello-world`, create the file `src/api/store/hello-world/route.ts` with the following content:
+
+```ts
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  res.json({
+    message: "Hello world!",
+  });
+}
+```
+
+## Supported HTTP methods
+
+The file based routing supports the following HTTP methods:
+
+- GET
+- POST
+- PUT
+- PATCH
+- DELETE
+- OPTIONS
+- HEAD
+
+You can define a handler for each of these methods by exporting a function with the name of the method in the paths `route.ts` file.
+
+For example:
+
+```ts
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  // Handle GET requests
+}
+
+export async function POST(req: MedusaRequest, res: MedusaResponse) {
+  // Handle POST requests
+}
+
+export async function PUT(req: MedusaRequest, res: MedusaResponse) {
+  // Handle PUT requests
+}
+```
+
+## Parameters
+
+To create an API route that accepts a path parameter, create a directory within the route's path whose name is of the format `[param]`.
+
+For example, if you want to define a route that takes a `productId` parameter, you can do so by creating a file called `/api/products/[productId]/route.ts`:
+
+```ts
+import type {
+  MedusaRequest,
+  MedusaResponse,
+} from "@medusajs/framework/http"
+
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  const { productId } = req.params;
+
+  res.json({
+    message: `You're looking for product ${productId}`
+  })
+}
+```
+
+To create an API route that accepts multiple path parameters, create within the file's path multiple directories whose names are of the format `[param]`.
+
+For example, if you want to define a route that takes both a `productId` and a `variantId` parameter, you can do so by creating a file called `/api/products/[productId]/variants/[variantId]/route.ts`.
+
+## Using the container
+
+The Medusa container is available on `req.scope`. Use it to access modules' main services and other registered resources:
+
+```ts
+import type {
+  MedusaRequest,
+  MedusaResponse,
+} from "@medusajs/framework/http"
+
+export const GET = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  const productModuleService = req.scope.resolve("product")
+
+  const [, count] = await productModuleService.listAndCount()
+
+  res.json({
+    count,
+  })
+}
+```
+
+## Middleware
+
+You can apply middleware to your routes by creating a file called `/api/middlewares.ts`. This file must export a configuration object with what middleware you want to apply to which routes.
+
+For example, if you want to apply a custom middleware function to the `/store/custom` route, you can do so by adding the following to your `/api/middlewares.ts` file:
+
+```ts
+import { defineMiddlewares } from "@medusajs/framework/http"
+import type {
+  MedusaRequest,
+  MedusaResponse,
+  MedusaNextFunction,
+} from "@medusajs/framework/http";
+
+async function logger(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  console.log("Request received");
+  next();
+}
+
+export default defineMiddlewares({
+  routes: [
+    {
+      matcher: "/store/custom",
+      middlewares: [logger],
+    },
+  ],
+})
+```
+
+The `matcher` property can be either a string or a regular expression. The `middlewares` property accepts an array of middleware functions.
+
+
+---
+
+
+// ./api/store/custom/route.ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  res.sendStatus(200);
+}
+
+
+---
+
+
+// ./api/middlewares.ts
+import {
+  defineMiddlewares,
+  validateAndTransformQuery,
+} from "@medusajs/framework/http";
+
+import { createFindParams } from "@medusajs/medusa/api/utils/validators";
+
+export const GetAttributesSchema = createFindParams();
+
+export default defineMiddlewares({
+  routes: [
+    {
+      matcher: "/admin/attribute",
+      method: "GET",
+      middlewares: [
+        validateAndTransformQuery(GetAttributesSchema, {
+          defaults: [
+            "id",
+            "name",
+            "handle",
+            "type",
+            "filterable",
+            "metadata",
+            "created_at",
+            "updated_at",
+          ],
+          isList: true,
+        }),
+      ],
+    },
+    {
+      // Используем параметр :id для соответствия роуту
+      matcher: "/admin/attribute/:id",
+      method: "GET",
+      middlewares: [
+        validateAndTransformQuery(GetAttributesSchema, {
+          defaults: [
+            "id",
+            "name",
+            "handle",
+            "type",
+            "filterable",
+            "metadata",
+            "created_at",
+            "updated_at",
+          ],
+          // Важно: для одной записи это false
+          isList: false,
+        }),
+      ],
+    },
+  ],
+});
+
+
+---
+
+
+// ./api/admin/attribute/[id]/route.ts
+import {
+  getAttribute,
+  updateAttribute,
+} from "@/modules/attribute/interface.server";
+
+export const GET = getAttribute;
+export const POST = updateAttribute;
+
+
+---
+
+
+// ./api/admin/attribute/route.ts
+import {
+  listAttributes,
+  createAttribute,
+} from "@/modules/attribute/interface.server";
+
+export const GET = listAttributes;
+export const POST = createAttribute;
+
+
+---
+
+
+// ./api/admin/custom/route.ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
+
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  res.sendStatus(200);
+}
+
+
+---
+
+
+// ./workflows/README.md
+# Custom Workflows
+
+A workflow is a series of queries and actions that complete a task.
+
+The workflow is created in a TypeScript or JavaScript file under the `src/workflows` directory.
+
+> Learn more about workflows in [this documentation](https://docs.medusajs.com/learn/fundamentals/workflows).
+
+For example:
+
+```ts
+import {
+  createStep,
+  createWorkflow,
+  WorkflowResponse,
+  StepResponse,
+} from "@medusajs/framework/workflows-sdk"
+
+const step1 = createStep("step-1", async () => {
+  return new StepResponse(`Hello from step one!`)
+})
+
+type WorkflowInput = {
+  name: string
+}
+
+const step2 = createStep(
+  "step-2",
+  async ({ name }: WorkflowInput) => {
+    return new StepResponse(`Hello ${name} from step two!`)
+  }
+)
+
+type WorkflowOutput = {
+  message1: string
+  message2: string
+}
+
+const helloWorldWorkflow = createWorkflow(
+  "hello-world",
+  (input: WorkflowInput) => {
+    const greeting1 = step1()
+    const greeting2 = step2(input)
+    
+    return new WorkflowResponse({
+      message1: greeting1,
+      message2: greeting2
+    })
+  }
+)
+
+export default helloWorldWorkflow
+```
+
+## Execute Workflow
+
+You can execute the workflow from other resources, such as API routes, scheduled jobs, or subscribers.
+
+For example, to execute the workflow in an API route:
+
+```ts
+import type {
+  MedusaRequest,
+  MedusaResponse,
+} from "@medusajs/framework"
+import myWorkflow from "../../../workflows/hello-world"
+
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  const { result } = await myWorkflow(req.scope)
+    .run({
+      input: {
+        name: req.query.name as string,
+      },
+    })
+
+  res.send(result)
+}
+```
+
+
+---
+
+
+// ./links/README.md
+# Module Links
+
+A module link forms an association between two data models of different modules, while maintaining module isolation.
+
+> Learn more about links in [this documentation](https://docs.medusajs.com/learn/fundamentals/module-links)
+
+For example:
+
+```ts
+import BlogModule from "../modules/blog"
+import ProductModule from "@medusajs/medusa/product"
+import { defineLink } from "@medusajs/framework/utils"
+
+export default defineLink(
+  ProductModule.linkable.product,
+  BlogModule.linkable.post
+)
+```
+
+This defines a link between the Product Module's `product` data model and the Blog Module (custom module)'s `post` data model.
+
+Then, in the Medusa application, run the following command to sync the links to the database:
+
+```bash
+npx medusa db:migrate
+```
+
+
+---
+
+
+// ./admin/tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["."]
+}
+
+
+---
+
+
+// ./admin/README.md
+# Admin Customizations
+
+You can extend the Medusa Admin to add widgets and new pages. Your customizations interact with API routes to provide merchants with custom functionalities.
+
+> Learn more about Admin Extensions in [this documentation](https://docs.medusajs.com/learn/fundamentals/admin).
+
+## Example: Create a Widget
+
+A widget is a React component that can be injected into an existing page in the admin dashboard.
+
+For example, create the file `src/admin/widgets/product-widget.tsx` with the following content:
+
+```tsx title="src/admin/widgets/product-widget.tsx"
+import { defineWidgetConfig } from "@medusajs/admin-sdk"
+
+// The widget
+const ProductWidget = () => {
+  return (
+    <div>
+      <h2>Product Widget</h2>
+    </div>
+  )
+}
+
+// The widget's configurations
+export const config = defineWidgetConfig({
+  zone: "product.details.after",
+})
+
+export default ProductWidget
+```
+
+This inserts a widget with the text “Product Widget” at the end of a product’s details page.
+
+
+---
+
+
+// ./admin/vite-env.d.ts
+/// <reference types="vite/client" />
+
+
+---
+
+
+// ./modules/README.md
+# Custom Module
+
+A module is a package of reusable functionalities. It can be integrated into your Medusa application without affecting the overall system. You can create a module as part of a plugin.
+
+> Learn more about modules in [this documentation](https://docs.medusajs.com/learn/fundamentals/modules).
+
+To create a module:
+
+## 1. Create a Data Model
+
+A data model represents a table in the database. You create a data model in a TypeScript or JavaScript file under the `models` directory of a module.
+
+For example, create the file `src/modules/blog/models/post.ts` with the following content:
+
+```ts
+import { model } from "@medusajs/framework/utils"
+
+const Post = model.define("post", {
+  id: model.id().primaryKey(),
+  title: model.text(),
+})
+
+export default Post
+```
+
+## 2. Create a Service
+
+A module must define a service. A service is a TypeScript or JavaScript class holding methods related to a business logic or commerce functionality.
+
+For example, create the file `src/modules/blog/service.ts` with the following content:
+
+```ts
+import { MedusaService } from "@medusajs/framework/utils"
+import Post from "./models/post"
+
+class BlogModuleService extends MedusaService({
+  Post,
+}){
+}
+
+export default BlogModuleService
+```
+
+## 3. Export Module Definition
+
+A module must have an `index.ts` file in its root directory that exports its definition. The definition specifies the main service of the module.
+
+For example, create the file `src/modules/blog/index.ts` with the following content:
+
+```ts
+import BlogModuleService from "./service"
+import { Module } from "@medusajs/framework/utils"
+
+export const BLOG_MODULE = "blog"
+
+export default Module(BLOG_MODULE, {
+  service: BlogModuleService,
+})
+```
+
+## 4. Add Module to Medusa's Configurations
+
+To start using the module, add it to `medusa-config.ts`:
+
+```ts
+module.exports = defineConfig({
+  projectConfig: {
+    // ...
+  },
+  modules: [
+    {
+      resolve: "./src/modules/blog",
+    },
+  ],
+})
+```
+
+## 5. Generate and Run Migrations
+
+To generate migrations for your module, run the following command:
+
+```bash
+npx medusa db:generate blog
+```
+
+Then, to run migrations, run the following command:
+
+```bash
+npx medusa db:migrate
+```
+
+## Use Module
+
+You can use the module in customizations within the Medusa application, such as workflows and API routes.
+
+For example, to use the module in an API route:
+
+```ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import BlogModuleService from "../../../modules/blog/service"
+import { BLOG_MODULE } from "../../../modules/blog"
+
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+): Promise<void> {
+  const blogModuleService: BlogModuleService = req.scope.resolve(
+    BLOG_MODULE
+  )
+
+  const posts = await blogModuleService.listPosts()
+
+  res.json({
+    posts
+  })
+}
+```
+
+
+---
+
+
+//  src/modules/attribute/models/attribute.ts
+import { model } from "@medusajs/framework/utils";
+import { AttributeFieldType } from "../domain/type";
+import AttributeValueSchema from "./attribute-value";
+
+const AttributeSchema = model.define("attribute", {
+  id: model.id().primaryKey(),
+  name: model.text(),
+  handle: model.text().unique(),
+  type: model.enum(AttributeFieldType),
+  filterable: model.boolean().default(false),
+  metadata: model.json().nullable(),
+  values: model.hasMany(() => AttributeValueSchema, {
+    foreignKey: "attribute_id",
+  }),
+});
+
+export default AttributeSchema;
+
+
+---
+
+
+//  src/modules/attribute/models/query/use-attribute.query.ts
+import { useQuery } from "@tanstack/react-query";
+
+import { attributeApi } from "../../api/endpoint.api";
+import {
+  ATTRIBUTE_RELATION_FIELDS,
+  AttributeListParams,
+  AttributeListResponse,
+  AttributeRelationFieldList,
+  AttributeRelationResponse,
+  AttributeResponse,
+} from "../../interface.type";
+
+const useAttributeFabric =
+  <T extends AttributeResponse>(relations?: AttributeRelationFieldList) =>
+  ({ attributeId }: { attributeId: string }) => {
+    const { data, ...rest } = useQuery({
+      queryKey: ["attribute", attributeId, relations],
+      queryFn: async () => {
+        return attributeApi.get<T>({
+          id: attributeId,
+          ...relations,
+        });
+      },
+
+      enabled: !!attributeId,
+    });
+
+    return { attributeData: data, ...rest };
+  };
+
+export const useAttributeQuery = useAttributeFabric();
+export const useAttributeWithValueListQuery =
+  useAttributeFabric<AttributeRelationResponse>(ATTRIBUTE_RELATION_FIELDS);
+
+const useAttributeListFabric =
+  (relations?: AttributeRelationFieldList) => (query: AttributeListParams) => {
+    const { data, ...rest } = useQuery({
+      queryKey: ["attribute", query, relations],
+      queryFn: async () => {
+        return attributeApi.getList<AttributeListResponse>({
+          ...query,
+          ...relations,
+        });
+      },
+    });
+
+    return { ...data, ...rest };
+  };
+
+export const useAttributeListQuery = useAttributeListFabric();
+export const useAttributeListWithValueListQuery = useAttributeListFabric(
+  ATTRIBUTE_RELATION_FIELDS,
+);
+
+
+---
+
+
+//  src/modules/attribute/models/attribute-value.ts
+import { model } from "@medusajs/framework/utils";
+import AttributeSchema from "./attribute";
+
+const AttributeValueSchema = model.define("attribute_value", {
+  id: model.id().primaryKey(),
+  name: model.text(),
+  value: model.text(),
+  rank: model.number().default(0),
+  metadata: model.json().nullable(),
+  attribute: model.belongsTo(() => AttributeSchema, {
+    foreignKey: "attribute_id",
+  }),
+});
+
+export default AttributeValueSchema;
+
+
+---
+
+
+//  src/modules/attribute/models/form/attribute-form.model.ts
+import { combineDefaultSchemas } from "@/shared/lib/react-hook-form";
+import { DefaultValues } from "react-hook-form";
+import { AttributeValueFormDefaultValue } from "../../domain/attribute-value.schema";
+import { AttributeFormDefaultValues } from "../../domain/attribute.schema";
+import { AttributeRelationCreateForm } from "../../domain/from-create.schema";
+import {
+  AttributeFieldType,
+  AttributeRelationResponse,
+} from "../../interface.type";
+
+export const attributeFormDefaultValues: AttributeFormDefaultValues = {
+  name: "",
+  handle: "",
+  type: AttributeFieldType.SINGLE,
+  filterable: false,
+  metadata: "",
+};
+
+export const attributeValueFormDefaultValues: AttributeValueFormDefaultValue = {
+  name: "",
+  value: "",
+  rank: 0,
+  metadata: "",
+};
+
+export const attributeRelationFromDefaultValues: AttributeRelationCreateForm =
+  combineDefaultSchemas<AttributeRelationCreateForm>({
+    attributeData: attributeFormDefaultValues,
+    valueListData: [attributeValueFormDefaultValues],
+  });
+
+export const buildAttributeToForm = (
+  attributeRelationResponse?: AttributeRelationResponse,
+): AttributeRelationCreateForm => {
+  if (!attributeRelationResponse) {
+    return attributeRelationFromDefaultValues;
+  }
+  attributeRelationResponse;
+
+  return {
+    ...attributeRelationResponse,
+    attributeData: {
+      ...attributeRelationResponse.attributeData,
+      metadata: JSON.stringify(
+        attributeRelationResponse.attributeData.metadata,
+      ),
+    },
+    valueListData: attributeRelationResponse.valueListData.map((item) => {
+      return {
+        ...item,
+        metadata: JSON.stringify(item.metadata),
+      };
+    }),
+  };
+};
+
+export const getAttributeRelationCreateFormDefaultValues = <
+  T extends AttributeRelationCreateForm,
+>(
+  customDefaults?: DefaultValues<T>,
+): DefaultValues<T> => {
+  return {
+    ...attributeRelationFromDefaultValues,
+    ...customDefaults,
+  } as DefaultValues<T>;
+};
+
+
+---
+
+
+//  src/modules/attribute/models/mutation/use-attribute-create.mutation.ts
+import { toast } from "@medusajs/ui";
+import { useMutation } from "@tanstack/react-query";
+import { attributeApi } from "../../api/endpoint.api";
+import { AttributeRelationCreatePayload } from "../../interface.type";
+
+type UseAttributeCreateFabricProps = {
+  onSuccess: () => void;
+  onError: () => void;
+};
+const useAttributeCreateFabric =
+  ({ onSuccess, onError }: UseAttributeCreateFabricProps) =>
+  () => {
+    const { mutateAsync, ...rest } = useMutation({
+      mutationFn: async (data: AttributeRelationCreatePayload) => {
+        return attributeApi.create(data);
+      },
+      onSuccess,
+      onError,
+    });
+    return { createAttribute: mutateAsync, ...rest };
+  };
+
+export const useAttributeCreateMutation = useAttributeCreateFabric({
+  onSuccess: () => {
+    toast.success("Attribute created successfully");
+  },
+  onError: () => toast.error("Failed to create attribute"),
+});
+
+
+---
+
+
+//  src/modules/attribute/index.ts
+
+import { Module } from "@medusajs/framework/utils";
+import AttributeModuleService from "./service/service";
+
+export const ATTRIBUTE_MODULE = "attribute";
+
+export default Module(ATTRIBUTE_MODULE, {
+  service: AttributeModuleService,
+});
+
+
+---
+
+
+// ./modules/attribute/interface.type.ts
+export * from "./domain/type";
+export * from "./domain/api.type";
+export * from "./api/route.api";
+
+
+---
+
+
+//  src/modules/attribute/ui/form/index.tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Spinner } from "@medusajs/icons";
+import { Button, Label, Text } from "@medusajs/ui";
+import cx from "classnames";
+import { ComponentProps, useEffect } from "react";
+import {
+  Controller,
+  DefaultValues,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
+import { ZodTypeAny } from "zod";
+import { AttributeHandleElement } from "./element/attribute-handle.element";
+import { AttributeIsFilterableElement } from "./element/attribute-is-filterable.element";
+import { AttributeJSONViewElement } from "./element/attribute-json-view.element";
+import { AttributeNameElement } from "./element/attribute-name.element";
+import { AttributeTypeElement } from "./element/attribute-type.element";
+import { AttributeValueListElement } from "./element/value-list/attribute-vlaue-list.element";
+import { ButtonSubmitProps } from "@/shared/lib/react-hook-form";
+import {
+  AttributeRelationCreateForm,
+  AttributeRelationCreateFormSchema,
+} from "../../domain/from-create.schema";
+import { getAttributeRelationCreateFormDefaultValues } from "../../models/form/attribute-form.model";
+
+type AttributeFromCreateProps<T extends AttributeRelationCreateForm> =
+  ComponentProps<"div"> & {
+    onSubmitForm: (data: T) => void;
+    schema?: ZodTypeAny;
+    defaultValues?: DefaultValues<T>;
+  };
+
+type AttributeFormComponent = <T extends AttributeRelationCreateForm>(
+  props: AttributeFromCreateProps<T>,
+) => React.ReactElement;
+
+type AttributeFormFields = {
+  FieldName: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldHandle: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldType: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldIsFilterable: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldValuesList: (props: ComponentProps<"div">) => React.ReactElement;
+  FieldJSONView: (props: ComponentProps<"div">) => React.ReactElement;
+  ButtonSubmit: (props: ButtonSubmitProps) => React.ReactElement;
+};
+
+// 3. Объединяем их в один тип
+type AttributeFromType = AttributeFormComponent & AttributeFormFields;
+
+export const AttributeFrom: AttributeFromType = <
+  T extends AttributeRelationCreateForm,
+>(
+  props: AttributeFromCreateProps<T>,
+) => {
+  const { children, className, onSubmitForm, defaultValues, schema, ...rest } =
+    props;
+
+  const form = useForm<T>({
+    resolver: zodResolver(schema || AttributeRelationCreateFormSchema),
+    defaultValues:
+      getAttributeRelationCreateFormDefaultValues<T>(defaultValues),
+  });
+
+  useEffect(() => {
+    form.reset(getAttributeRelationCreateFormDefaultValues<T>(defaultValues));
+  }, [defaultValues, form]);
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmitForm)}
+        className={cx("flex flex-col gap-4", className)}
+      >
+        {children}
+      </form>
+    </FormProvider>
+  );
+};
+
+AttributeFrom.FieldName = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.name"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Name
+          </Label>
+          <AttributeNameElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldHandle = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.handle"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Handle
+          </Label>
+          <AttributeHandleElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldType = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.type"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute Type
+          </Label>
+          <AttributeTypeElement {...field} />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+// type AttributeIsFilterableElementProps = ComponentProps<"div">;
+AttributeFrom.FieldIsFilterable = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.filterable"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Is Filterable?
+          </Label>
+          <AttributeIsFilterableElement
+            id="filterable"
+            checked={!!field.value}
+            onCheckedChange={(val) => field.onChange(val === true)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldJSONView = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+  return (
+    <Controller
+      control={control}
+      name="attributeData.metadata"
+      render={({ field, fieldState }) => (
+        <div className={cx("flex flex-col gap-2", className)}>
+          <Label size="small" weight="plus">
+            Attribute JSON View
+          </Label>
+          <AttributeJSONViewElement
+            data={field.value}
+            onSave={field.onChange}
+          />
+          <Text className="text-rose-600">{fieldState.error?.message}</Text>
+        </div>
+      )}
+    />
+  );
+};
+
+AttributeFrom.FieldValuesList = (props) => {
+  const { className } = props;
+  const { control } = useFormContext<AttributeRelationCreateForm>();
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "valueListData",
+  });
+  return (
+    <div className={cx("flex flex-col gap-2", className)}>
+      <Label size="small" weight="plus">
+        Attribute Values
+      </Label>
+      <AttributeValueListElement
+        fields={fields}
+        onAppend={append}
+        onRemove={remove}
+      />
+    </div>
+  );
+};
+
+AttributeFrom.ButtonSubmit = (props) => {
+  const { isPending, submitText, ...rest } = props;
+
+  return (
+    <Button type="submit" disabled={isPending} {...rest}>
+      {isPending && <Spinner className="mr-2 h-4 w-4 animate-spin" />}
+      {submitText}
+    </Button>
+  );
+};
+
+
+---
+
+
+//  src/modules/attribute/ui/form/type.ts
+import { ComponentProps } from "react";
+
+export type AttributeFormDefaultProps = ComponentProps<"div"> & {
+  callbackUrl?: string;
+  onSuccess?: () => void;
+  onError?: () => void;
+};
+
+export type AttributeFormCreateProps = AttributeFormDefaultProps;
+export type AttributeFormUpdateProps = AttributeFormDefaultProps & {
+  attributeId: string;
+};
+
+
+---
+
+
+//  src/modules/attribute/ui/form/attribute-form-create.tsx
+import { Container, Heading } from "@medusajs/ui";
+import { AttributeFrom } from ".";
+import { useAttributeCreateHandler } from "./handler/use-attribute-create.handler";
+import { AttributeFormCreateProps } from "./type";
+
+export const AttributeFormCreate = (props: AttributeFormCreateProps) => {
+  const { callbackUrl, onSuccess, onError, ...rest } = props;
+  const { handleAttributeCreate, isPending, isError } =
+    useAttributeCreateHandler({
+      onSuccess,
+      onError,
+      callbackUrl,
+    });
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+
+      <AttributeFrom
+        className="flex flex-col gap-y-4"
+        onSubmitForm={handleAttributeCreate}
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldName />
+          <AttributeFrom.FieldHandle />
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldType />
+          <AttributeFrom.FieldIsFilterable />
+        </div>
+
+        <AttributeFrom.FieldJSONView />
+
+        <Heading level="h2">Values</Heading>
+
+        <AttributeFrom.FieldValuesList />
+
+        <div className="flex justify-end mt-4">
+          <AttributeFrom.ButtonSubmit
+            isPending={isPending}
+            submitText="Create Attribute"
+          />
+        </div>
+      </AttributeFrom>
+    </Container>
+  );
+};
+
+
+---
+
+
+// ./modules/attribute/ui/form/_attribute-create-form.tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Container, Heading, Input, Select, Text } from "@medusajs/ui";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+
+import { JsonViewSection } from "@/shared/ui/kit/json-view-section/json-view-section";
+import {
+  AttributeRelationCreateForm,
+  AttributeRelationCreateFormSchema,
+  defaultAttributeRelationCreateForm,
+} from "../../domain/from-create.schema";
+import { useAttributeCreateHandler } from "./handler/use-attribute-create.handler";
+import {
+  PAGE_ATTRIBUTE_ROUTES,
+  AttributeFieldType,
+} from "../../interface.type";
+
+export const AttributeCreateForm = () => {
+  const form = useForm<AttributeRelationCreateForm>({
+    resolver: zodResolver(AttributeRelationCreateFormSchema),
+    defaultValues: {
+      ...defaultAttributeRelationCreateForm,
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "valueListData",
+  });
+
+  const { handleAttributeCreate, isPending, isError } =
+    useAttributeCreateHandler({
+      onSuccess: () => {
+        console.log("output_log: %%%%%%%%%%%%% =>>> OLOLOLO");
+      },
+      callbackUrl: PAGE_ATTRIBUTE_ROUTES.BASE,
+      onError: () => {
+        console.log("output_log: %%%%%%%%%%%%% =>>> OLOLOLO");
+      },
+    });
+
+  const { errors } = form.formState;
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+      <form
+        onSubmit={form.handleSubmit(handleAttributeCreate)}
+        className="flex flex-col gap-y-4"
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <div>
+            <Input
+              {...form.register("attributeData.name")}
+              placeholder="e.g. Color"
+            />
+            <div className="h-6 pt-1">
+              {errors.attributeData?.name && (
+                <Text className="text-ui-fg-error text-xs">
+                  {errors.attributeData.name.message}
+                </Text>
+              )}
+            </div>
+          </div>
+          <div>
+            <Input
+              {...form.register("attributeData.handle")}
+              placeholder="e.g. color"
+            />
+            <div className="h-6 pt-1">
+              {errors.attributeData?.handle && (
+                <Text className="text-ui-fg-error text-xs">
+                  {errors.attributeData.handle.message}
+                </Text>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <Controller
+            control={form.control}
+            name="attributeData.type"
+            render={({ field: { onChange, value } }) => (
+              <Select onValueChange={onChange} value={value}>
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {Object.entries(AttributeFieldType).map(([key, type]) => (
+                    <Select.Item key={type} value={type}>
+                      {key}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            )}
+          />
+          <div className="flex items-center gap-x-2">
+            <input
+              type="checkbox"
+              {...form.register("attributeData.filterable")}
+              id="filterable"
+            />
+            <label htmlFor="filterable" className="text-ui-fg-subtle text-sm">
+              Filterable
+            </label>
+          </div>
+        </div>
+
+        {}
+        <div>
+          <JsonViewSection
+            title="Metadata"
+            data={form.watch("attributeData.metadata")}
+            editable={true}
+            onSave={(value) => form.setValue("attributeData.metadata", value)}
+          />
+          <div className="h-6 pt-1">
+            {errors.attributeData?.metadata && (
+              <Text className="text-ui-fg-error text-xs">
+                {errors.attributeData.metadata.message}
+              </Text>
+            )}
+          </div>
+        </div>
+
+        <Heading level="h2">Values</Heading>
+        <div className="flex flex-col gap-y-2">
+          {fields.map((field, index) => (
+            <div
+              key={field.id}
+              className="grid grid-cols-3 items-start gap-x-4"
+            >
+              <div>
+                <Input
+                  {...form.register(`valueListData.${index}.name`)}
+                  placeholder="e.g. Red"
+                />
+                <div className="h-6 pt-1">
+                  {errors.valueListData?.[index]?.name && (
+                    <Text className="text-ui-fg-error text-xs">
+                      {errors.valueListData[index]?.name?.message}
+                    </Text>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Input
+                  {...form.register(`valueListData.${index}.value`)}
+                  placeholder="e.g. #FF0000"
+                />
+                <div className="h-6 pt-1">
+                  {errors.valueListData?.[index]?.value && (
+                    <Text className="text-ui-fg-error text-xs">
+                      {errors.valueListData[index]?.value?.message}
+                    </Text>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-x-2">
+                  <Input
+                    {...form.register(`valueListData.${index}.rank`, {
+                      valueAsNumber: true,
+                    })}
+                    type="number"
+                    defaultValue={0}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => remove(index)}
+                    variant="danger"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="h-6 pt-1" /> {}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          onClick={() => append({ name: "", value: "", rank: 0, metadata: "" })}
+        >
+          Add Value
+        </Button>
+
+        {}
+        <div className="flex justify-end mt-4">
+          <Button type="submit" isLoading={isPending}>
+            Create Attribute
+          </Button>
+        </div>
+      </form>
+    </Container>
+  );
+};
+
+
+---
+
+
+//  src/modules/attribute/ui/form/hook/use-attribute-form-update.tsx
+import { buildAttributeToForm } from "@/modules/attribute/models/form/attribute-form.model";
+import { useMemo } from "react";
+import { useAttributeWithValueListQuery } from "../../../models/query/use-attribute.query";
+
+type UseAttributeFormUpdateProps = {
+  attributeId: string;
+};
+
+export const useAttributeFormUpdate = (props: UseAttributeFormUpdateProps) => {
+  const { attributeId } = props;
+  const { attributeData, ...rest } = useAttributeWithValueListQuery({
+    attributeId,
+  });
+
+  const formValues = useMemo(
+    () => buildAttributeToForm(attributeData),
+    [attributeData],
+  );
+
+  return {
+    formValues,
+    ...rest,
+  };
+};
+
+
+---
+
+
+//  src/modules/attribute/ui/form/handler/use-attribute-create.handler.ts
+import { HandlerFormBaseProps } from "@/shared/lib/react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { AttributeRelationCreateForm } from "../../../domain/from-create.schema";
+import { useAttributeCreateMutation } from "../../../models/mutation/use-attribute-create.mutation";
+
+export const useAttributeCreateHandler = (props: HandlerFormBaseProps) => {
+  const { callbackUrl, onSuccess, onError } = props;
+  const { createAttribute, ...rest } = useAttributeCreateMutation();
+  const navigate = useNavigate();
+
+  const handleAttributeCreate = async (data: AttributeRelationCreateForm) => {
+    await createAttribute(data, {
+      onSuccess: () => {
+        onSuccess?.();
+        if (callbackUrl) navigate(callbackUrl);
+      },
+      onError: () => {
+        onError?.();
+        if (callbackUrl) navigate(callbackUrl);
+      },
+    });
+  };
+
+  return { handleAttributeCreate, ...rest };
+};
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/attribute-is-filterable.element.tsx
+import { Checkbox } from "@medusajs/ui";
+import { forwardRef, type ComponentProps } from "react";
+
+type AttributeIsFilterableElementProps = ComponentProps<typeof Checkbox>;
+
+export const AttributeIsFilterableElement = forwardRef<
+  HTMLButtonElement,
+  AttributeIsFilterableElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+  return <Checkbox ref={ref} {...rest} />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/attribute-type.element.tsx
+import { AttributeFieldType } from "@/modules/attribute/interface.type";
+import { Select } from "@medusajs/ui";
+import React, { type ComponentProps } from "react";
+
+type AttributeTypeElementProps = ComponentProps<typeof Select> & {
+  onChange?: (value: string) => void;
+};
+
+export const AttributeTypeElement = React.forwardRef<
+  HTMLButtonElement,
+  AttributeTypeElementProps
+>((props, ref) => {
+  const { onChange, value, ...rest } = props;
+
+  return (
+    <Select value={value} onValueChange={onChange} {...rest}>
+      {}
+      <Select.Trigger ref={ref}>
+        {" "}
+        {}
+        <Select.Value />
+      </Select.Trigger>
+      <Select.Content>
+        {Object.entries(AttributeFieldType).map(([key, type]) => (
+          <Select.Item key={type} value={type}>
+            {key}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select>
+  );
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/attribute-handle.element.tsx
+import { Input } from "@medusajs/ui";
+import { ComponentProps, forwardRef } from "react";
+
+type AttributeHandleElementProps = ComponentProps<typeof Input>;
+
+export const AttributeHandleElement = forwardRef<
+  HTMLInputElement,
+  AttributeHandleElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+
+  return <Input ref={ref} {...rest} placeholder="e.g. Color" />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/value-list/attribute-value-value.element.tsx
+import { Input } from "@medusajs/ui";
+import { ComponentProps, forwardRef } from "react";
+
+type AttributeValueValueElementProps = ComponentProps<typeof Input>;
+
+export const AttributeValueValueElement = forwardRef<
+  HTMLInputElement,
+  AttributeValueValueElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+  return <Input ref={ref} {...rest} placeholder="e.g. #FF0000" />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/value-list/attribute-value-name.element.tsx
+import { Input } from "@medusajs/ui";
+import { forwardRef, type ComponentProps } from "react";
+
+type AttributeValueNameElementProps = ComponentProps<typeof Input>;
+
+export const AttributeValueNameElement = forwardRef<
+  HTMLInputElement,
+  AttributeValueNameElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+  return <Input ref={ref} {...rest} placeholder="e.g. Red" />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/value-list/attribute-vlaue-list.element.tsx
+import { AttributeRelationCreateForm } from "@/modules/attribute/domain/from-create.schema";
+import cx from "classnames";
+import type { ComponentProps } from "react";
+import { UseFieldArrayReturn } from "react-hook-form";
+import { AttributeValueRowElement } from "./attribute-value-row.element";
+import { Button } from "@medusajs/ui";
+
+type ValueListFieldArray = UseFieldArrayReturn<
+  AttributeRelationCreateForm,
+  "valueListData"
+>;
+
+type AttributeValueListElementProps = ComponentProps<"div"> & {
+  fields: ValueListFieldArray["fields"];
+  onAppend: ValueListFieldArray["append"];
+  onRemove: ValueListFieldArray["remove"];
+  children?: React.ReactNode;
+};
+
+export const AttributeValueListElement = (
+  props: AttributeValueListElementProps,
+) => {
+  const { fields, onAppend, onRemove, children, className, ...rest } = props;
+
+  return (
+    <div className={cx("flex flex-col gap-4", className)} {...rest}>
+      {children || (
+        <>
+          {fields.map((field, index) => (
+            <AttributeValueRowElement
+              key={field.id}
+              index={index}
+              onRemove={() => onRemove(index)}
+            />
+          ))}
+          <Button
+            type="button"
+            onClick={() =>
+              onAppend({ name: "", value: "", rank: 0, metadata: "" })
+            }
+            variant="secondary"
+          >
+            Add Value
+          </Button>
+        </>
+      )}
+    </div>
+  );
+};
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/value-list/attribute-value-rank.element.tsx
+import { Input } from "@medusajs/ui";
+import { forwardRef, type ComponentProps } from "react";
+
+type AttributeValueRankElementProps = ComponentProps<typeof Input>;
+
+export const AttributeValueRankElement = forwardRef<
+  HTMLInputElement,
+  AttributeValueRankElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+  return <Input ref={ref} {...rest} type="number" placeholder="0" />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/value-list/attribute-value-row.element.tsx
+import { Button, Label, Text } from "@medusajs/ui";
+import type { ComponentProps } from "react";
+import { AttributeValueNameElement } from "./attribute-value-name.element";
+import { AttributeValueRankElement } from "./attribute-value-rank.element";
+import { AttributeValueValueElement } from "./attribute-value-value.element";
+import { Controller } from "react-hook-form";
+import cx from "classnames";
+
+type AttributeValueRowElementProps = ComponentProps<"div"> & {
+  index: number;
+  onRemove: () => void;
+};
+
+export const AttributeValueRowElement = (
+  props: AttributeValueRowElementProps,
+) => {
+  const { index, onRemove, className, ...rest } = props;
+
+  return (
+    <div
+      className={cx(
+        "grid grid-cols-3 items-start gap-x-4 p-4 border border-gray-200 rounded-lg",
+        className,
+      )}
+      {...rest}
+    >
+      <div>
+        <Label size="small">Name</Label>
+        <Controller
+          name={`valueListData.${index}.name`}
+          render={({ field, fieldState }) => (
+            <div>
+              <AttributeValueNameElement {...field} />
+              {fieldState.error && (
+                <Text className="text-ui-fg-error text-xs">
+                  {fieldState.error.message}
+                </Text>
+              )}
+            </div>
+          )}
+        />
+      </div>
+
+      <div>
+        <Label size="small">Value</Label>
+        <Controller
+          name={`valueListData.${index}.value`}
+          render={({ field, fieldState }) => (
+            <div>
+              <AttributeValueValueElement {...field} />
+              {fieldState.error && (
+                <Text className="text-ui-fg-error text-xs">
+                  {fieldState.error.message}
+                </Text>
+              )}
+            </div>
+          )}
+        />
+      </div>
+
+      <div className="flex items-center gap-x-2">
+        <div>
+          <Label size="small">Rank</Label>
+          <Controller
+            name={`valueListData.${index}.rank`}
+            render={({ field, fieldState }) => (
+              <div>
+                <AttributeValueRankElement
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+                {fieldState.error && (
+                  <Text className="text-ui-fg-error text-xs">
+                    {fieldState.error.message}
+                  </Text>
+                )}
+              </div>
+            )}
+          />
+        </div>
+        <Button
+          type="button"
+          onClick={onRemove}
+          variant="danger"
+          size="small"
+          className="mt-6" // Выравниваем с полями
+        >
+          Remove
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/attribute-name.element.tsx
+import { Input } from "@medusajs/ui";
+import { forwardRef, type ComponentProps } from "react";
+
+type AttributeNameElementProps = ComponentProps<typeof Input>;
+
+export const AttributeNameElement = forwardRef<
+  HTMLInputElement,
+  AttributeNameElementProps
+>((props, ref) => {
+  const { children, ...rest } = props;
+  return <Input ref={ref} {...rest} placeholder="e.g. Color" />;
+});
+
+
+---
+
+
+// ./modules/attribute/ui/form/element/attribute-json-view.element.tsx
+import { JsonViewSection } from "@/shared/ui/kit/json-view-section/json-view-section";
+import type { ComponentProps } from "react";
+
+type AttributeJSONViewElementProps = ComponentProps<typeof JsonViewSection>;
+
+export const AttributeJSONViewElement = (
+  props: AttributeJSONViewElementProps,
+) => {
+  return <JsonViewSection title="Metadata" {...props} />;
+};
+
+
+---
+
+
+//  src/modules/attribute/ui/form/attribute-form-update.tsx
+import { Container, Heading } from "@medusajs/ui";
+import { AttributeFrom } from ".";
+import { useAttributeFormUpdate } from "./hook/use-attribute-form-update";
+import { AttributeFormUpdateProps } from "./type";
+
+export const AttributeFormUpdate = (props: AttributeFormUpdateProps) => {
+  const { callbackUrl, attributeId, onSuccess, onError, ...rest } = props;
+  // const { formValues } = useAttributeFormUpdate({ attributeId });
+  // const { handleAttributeCreate, isPending, isError } =
+  //   useAttributeUpdateHandler({
+  //     onSuccess,
+  //     onError,
+  //     callbackUrl,
+  //   });
+
+  return (
+    <Container>
+      <Heading level="h1">Create Attribute</Heading>
+
+      <AttributeFrom
+        className="flex flex-col gap-y-4"
+        onSubmitForm={(data) => console.log(data)}
+        defaultValues={{}}
+      >
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldName />
+          <AttributeFrom.FieldHandle />
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <AttributeFrom.FieldType />
+          <AttributeFrom.FieldIsFilterable />
+        </div>
+
+        <AttributeFrom.FieldJSONView />
+
+        <Heading level="h2">Values</Heading>
+
+        <AttributeFrom.FieldValuesList />
+
+        <div className="flex justify-end mt-4">
+          <AttributeFrom.ButtonSubmit
+            isPending={false}
+            submitText="Create Attribute"
+          />
+        </div>
+      </AttributeFrom>
+    </Container>
+  );
+};
+
+
+---
+
+
+//  src/modules/attribute/api/controller.api.ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
+import { ATTRIBUTE_MODULE } from "../index";
+import { createAttributeWorkflow } from "../workflows/create-attribute";
+import { AttributeRelationCreatePayload } from "../domain/api.type";
+
+export async function getAttribute(req: MedusaRequest, res: MedusaResponse) {
+  const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
+  const attribute = await attributeModuleService.retrieveAttribute(
+    req.params.id,
+    req.retrieveConfig,
+  );
+  res.status(200).json({ attribute });
+}
+
+export async function listAttributes(req: MedusaRequest, res: MedusaResponse) {
+  const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
+  const [attributeList, count] =
+    await attributeModuleService.listAndCountAttributes(
+      req.filterableFields,
+      req.listConfig,
+    );
+  res.status(200).json({ attributeList, count });
+}
+
+export async function createAttribute(req: MedusaRequest, res: MedusaResponse) {
+  try {
+    const { result } = await createAttributeWorkflow(req.scope).run({
+      input: req.body as AttributeRelationCreatePayload,
+    });
+
+    res.status(201).json({
+      attribute: result.attributeCreated,
+      values: result.valueListCreated,
+    });
+  } catch (error) {
+    console.error("Error creating attribute:", error);
+    res.status(500).json({
+      error: "Failed to create attribute",
+      details: error.message,
+    });
+  }
+}
+
+
+---
+
+
+//  src/modules/attribute/api/endpoint.api.ts
+import { sdk } from "@/shared/lib/medusa";
+import {
+  AttributeListParams,
+  AttributeRelationCreatePayload,
+} from "../interface.type";
+import { API_ATTRIBUTE_ENDPOINT } from "./route.api";
+
+export const attributeApi = {
+  get: async <T>({
+    id,
+    query,
+  }: {
+    id: string;
+    query?: AttributeListParams;
+  }): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_BY_ID(id), {
+      method: "GET",
+      query,
+    });
+  },
+  getList: async <T>(query?: Record<string, any>): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_LIST, {
+      method: "GET",
+      query,
+    });
+  },
+  create: async <T>(data: AttributeRelationCreatePayload): Promise<T> => {
+    return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.MUTATION.CREATE, {
+      method: "POST",
+      body: data,
+    });
+  },
+};
+
+
+---
+
+
+// ./modules/attribute/api/attribute.pmn.json
+{
+  "item": [
+    {
+      "name": "Attributes CRUD",
+      "item": [
+        {
+          "name": "POST /admin/attribute (Create)",
+          "item": [
+            {
+              "name": "Success - Create with values",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", () => {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attribute && res.attribute.id) {",
+                      "    pm.collectionVariables.set(\"attribute_id\", res.attribute.id);",
+                      "    console.log(`Saved attribute_id: ${res.attribute.id}`);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Fabric\",\n        \"handle\": \"fabric-test\",\n        \"type\": \"multi\",\n        \"filterable\": true,\n        \"metadata\": \"{\\\"source\\\": \\\"postman_test\\\"}\"\n    },\n    \"valueListData\": [\n        {\n            \"name\": \"Silk\",\n            \"value\": \"Silk\",\n            \"rank\": 1,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        },\n        {\n            \"name\": \"Linen\",\n            \"value\": \"Linen\",\n            \"rank\": 0,\n            \"metadata\": \"{\\\"is_natural\\\": true}\"\n        }\n    ]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Missing required 'name' in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"handle\": \"missing-name-test\",\n        \"type\": \"single\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Invalid 'type' enum in attributeData",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400 Bad Request\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"attributeData\": {\n        \"name\": \"Invalid Type Test\",\n        \"handle\": \"invalid-type-test\",\n        \"type\": \"invalid_enum_value\"\n    },\n    \"valueListData\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute (List)",
+          "item": [
+            {
+              "name": "Success - List (Simple)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - List (with Relations & Sorting)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?order=-name&limit=10&fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "order",
+                      "value": "-name"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/attribute/:id (Retrieve)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Retrieve by ID (with Relations)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response contains attribute object\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test(\"Attribute includes 'values' array\", () => {",
+                      "    const res = pm.response.json();",
+                      "    pm.expect(res.attribute.values).to.be.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}?fields=values.*",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"],
+                  "query": [
+                    {
+                      "key": "fields",
+                      "value": "values.*"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Error - Not Found",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404 Not Found\", () => {",
+                      "    pm.response.to.have.status(404);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/attr_nonexistent",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "attr_nonexistent"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "POST /admin/attribute/:id (Update)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Update by ID",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Fabric Type (Updated)\",\n    \"filterable\": false,\n    \"metadata\": \"{\\\"updated_by\\\": \\\"admin_user\\\"}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "DELETE /admin/attribute/:id (Delete)",
+          "item": [
+            {
+              "name": "Setup: Get an Attribute ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "const res = pm.response.json();",
+                      "if (res.attributeList && res.attributeList.length > 0) {",
+                      "    const firstAttributeId = res.attributeList[0].id;",
+                      "    pm.collectionVariables.set(\"attribute_id\", firstAttributeId);",
+                      "    console.log(`Setup complete. Saved attribute_id: ${firstAttributeId}`);",
+                      "} else {",
+                      "    console.warn(\"Setup warning: No attributes found to get an ID from.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute?limit=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Success - Delete by ID",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/attribute/{{attribute_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["admin", "attribute", "{{attribute_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "CRUD operations for the Attributes endpoint."
+    }
+  ],
+  "variable": [
+    {
+      "key": "attribute_id",
+      "value": ""
+    }
+  ]
+}
+
+
+---
+
+
+//  src/modules/attribute/api/route.api.ts
+const BASE_ENDPOINT = "/admin/attribute";
+export const API_ATTRIBUTE_ENDPOINT = {
+  BASE: BASE_ENDPOINT,
+
+  QUERY: {
+    GET_LIST: "/admin/attribute",
+    GET_BY_ID: (id: string) => `${BASE_ENDPOINT}/${id}`,
+  },
+  MUTATION: {
+    CREATE: "/admin/attribute",
+    UPDATE: (id: string) => `${BASE_ENDPOINT}/${id}`,
+    DELETE: (id: string) => `${BASE_ENDPOINT}/${id}`,
+  },
+} as const;
+
+const BASE_ROUTE = "/attribute";
+
+export const PAGE_ATTRIBUTE_ROUTES = {
+  BASE: BASE_ROUTE,
+  CREATE: `${BASE_ROUTE}/create`,
+  EDIT: `${BASE_ROUTE}/:id/update`,
+} as const;
+
+
+---
+
+
+// ./modules/attribute/interface.server.ts
+export * from "./api/controller.api";
+
+
+---
+
+
+//  src/modules/attribute/workflows/steps/create-attribute-value-step.ts
+import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
+import { ATTRIBUTE_MODULE } from "../..";
+import AttributeModuleService from "../../service/service";
+import { AttributeValueCreatePayload } from "../../interface.type";
+import { getMetadata } from "../../tool/metadata";
+
+export const createAttributeValuesStep = createStep(
+  "create-attribute-values-step",
+  async (
+    data: {
+      target: { id: string };
+      valueListData: AttributeValueCreatePayload[];
+    },
+    { container },
+  ) => {
+    console.log("output_log: DATA =>>>", data);
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    const valuesWithAttributeId = data.valueListData.map((value) => ({
+      ...value,
+      attribute_id: data.target.id,
+      metadata: getMetadata(value.metadata),
+    }));
+
+    const createdValues = await attributeModuleService.createAttributeValues(
+      valuesWithAttributeId,
+    );
+
+    return new StepResponse(createdValues, {
+      idList: createdValues.map((v) => v.id),
+    });
+  },
+  async (undoData, { container }) => {
+    if (!undoData?.idList?.length) return;
+
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    console.log(
+      `Compensation: Deleting attribute values with ids ${undoData.idList.join(", ")}`,
+    );
+    await attributeModuleService.deleteAttributeValues(undoData.idList);
+  },
+);
+
+
+---
+
+
+//  src/modules/attribute/workflows/steps/create-attribute-steps.ts
+import { createStep, StepResponse } from "@medusajs/workflows-sdk";
+import { ATTRIBUTE_MODULE } from "../..";
+import { AttributeCreatePayload } from "../../interface.type";
+import AttributeModuleService from "../../service/service";
+import { getMetadata } from "../../tool/metadata";
+
+export const createAttributeStep = createStep(
+  "create-attribute-step",
+
+  async (data: AttributeCreatePayload, { container }) => {
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+
+    const [createdAttribute] = await attributeModuleService.createAttributes([
+      {
+        ...data,
+        metadata: getMetadata(data.metadata),
+      },
+    ]);
+
+    return new StepResponse(createdAttribute, { id: createdAttribute.id });
+  },
+  async (undoData, { container }) => {
+    if (!undoData?.id) return;
+    const attributeModuleService =
+      container.resolve<AttributeModuleService>(ATTRIBUTE_MODULE);
+    await attributeModuleService.deleteAttributes(undoData.id);
+  },
+);
+
+
+---
+
+
+//  src/modules/attribute/workflows/create-attribute.ts
+import { createWorkflow, WorkflowResponse } from "@medusajs/workflows-sdk";
+import { createAttributeStep } from "./steps/create-attribute-steps";
+
+import { AttributeRelationCreatePayload } from "../interface.type";
+import { createAttributeValuesStep } from "./steps/create-attribute-value-step";
+
+// workflow
+export const createAttributeWorkflow = createWorkflow(
+  "create-attribute-workflow",
+  (input: AttributeRelationCreatePayload) => {
+    const { attributeData, valueListData } = input;
+    const attributeCreated = createAttributeStep(attributeData);
+    const valueListCreated = createAttributeValuesStep({
+      target: { id: attributeCreated.id },
+      valueListData,
+    });
+    return new WorkflowResponse({ attributeCreated, valueListCreated });
+  },
+);
+
+
+---
+
+
+// import { AttributeType } from "@/modules/attribute/domain/type";
+// import {
+//   createWorkflow,
+//   transform,
+//   WorkflowData,
+//   WorkflowResponse,
+// } from "@medusajs/workflows-sdk";
+// import {
+//   updateAttributeStep,
+//   updateAttributeValuesStep,
+// } from "./steps/update-attribute-steps";
+//
+// export type WorkflowInput = {
+//   id: string;
+//   name?: string;
+//   handle?: string;
+//   type?: string;
+//   filterable?: boolean;
+//   metadata?: Record<string, unknown>;
+//   values?: {
+//     id?: string;
+//     value: string;
+//     rank?: number;
+//     metadata?: Record<string, unknown>;
+//   }[];
+// };
+//
+// export const updateAttributeWorkflow = createWorkflow(
+//   "update-attribute-workflow",
+//   (input: WorkflowData<WorkflowInput>) => {
+//     const updatedAttribute = updateAttributeStep(input);
+//
+//     const valuesInput = transform(
+//       { updatedAttribute, input },
+//       (data: { updatedAttribute: AttributeType; input: WorkflowInput }) => {
+//         if (!data.input.values || data.input.values.length === 0) {
+//           return {
+//             attribute_id: data.updatedAttribute.id,
+//             values: [],
+//           };
+//         }
+//         return {
+//           attribute_id: data.updatedAttribute.id,
+//           values: data.input.values,
+//         };
+//       },
+//     );
+//
+//     updateAttributeValuesStep(valuesInput);
+//
+//     return new WorkflowResponse(updatedAttribute);
+//   },
+// );
+
+
+---
+
+
+// ./modules/attribute/migrations/Migration20250903094732.ts
+import { Migration } from '@mikro-orm/migrations';
+
+export class Migration20250903094732 extends Migration {
+
+  override async up(): Promise<void> {
+    this.addSql(`alter table if exists "attribute" drop constraint if exists "attribute_handle_unique";`);
+    this.addSql(`create table if not exists "attribute" ("id" text not null, "name" text not null, "handle" text not null, "type" text check ("type" in ('multi', 'single', 'boolean', 'range')) not null, "filterable" boolean not null default false, "metadata" jsonb null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "attribute_pkey" primary key ("id"));`);
+    this.addSql(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_attribute_handle_unique" ON "attribute" (handle) WHERE deleted_at IS NULL;`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_deleted_at" ON "attribute" (deleted_at) WHERE deleted_at IS NULL;`);
+
+    this.addSql(`create table if not exists "attribute_value" ("id" text not null, "name" text not null, "value" text not null, "rank" integer not null default 0, "metadata" jsonb null, "attribute_id" text not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "attribute_value_pkey" primary key ("id"));`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_value_attribute_id" ON "attribute_value" (attribute_id) WHERE deleted_at IS NULL;`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_attribute_value_deleted_at" ON "attribute_value" (deleted_at) WHERE deleted_at IS NULL;`);
+
+    this.addSql(`alter table if exists "attribute_value" add constraint "attribute_value_attribute_id_foreign" foreign key ("attribute_id") references "attribute" ("id") on update cascade;`);
+  }
+
+  override async down(): Promise<void> {
+    this.addSql(`alter table if exists "attribute_value" drop constraint if exists "attribute_value_attribute_id_foreign";`);
+
+    this.addSql(`drop table if exists "attribute" cascade;`);
+
+    this.addSql(`drop table if exists "attribute_value" cascade;`);
+  }
+
+}
+
+
+---
+
+
+// ./modules/attribute/migrations/.snapshot-attribute.json
+{
+  "namespaces": [
+    "public"
+  ],
+  "name": "public",
+  "tables": [
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "handle": {
+          "name": "handle",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "enumItems": [
+            "multi",
+            "single",
+            "boolean",
+            "range"
+          ],
+          "mappedType": "enum"
+        },
+        "filterable": {
+          "name": "filterable",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "boolean"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        }
+      },
+      "name": "attribute",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "IDX_attribute_handle_unique",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_attribute_handle_unique\" ON \"attribute\" (handle) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "IDX_attribute_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_deleted_at\" ON \"attribute\" (deleted_at) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "attribute_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "0",
+          "mappedType": "integer"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "attribute_id": {
+          "name": "attribute_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        }
+      },
+      "name": "attribute_value",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "IDX_attribute_value_attribute_id",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_value_attribute_id\" ON \"attribute_value\" (attribute_id) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "IDX_attribute_value_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_attribute_value_deleted_at\" ON \"attribute_value\" (deleted_at) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "attribute_value_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "attribute_value_attribute_id_foreign": {
+          "constraintName": "attribute_value_attribute_id_foreign",
+          "columnNames": [
+            "attribute_id"
+          ],
+          "localTableName": "public.attribute_value",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.attribute",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    }
+  ],
+  "nativeEnums": {}
+}
+
+
+---
+
+
+//  src/modules/attribute/domain/type.ts
+import { InferTypeOf } from "@medusajs/framework/types";
+import AttributeSchema from "../models/attribute";
+import AttributeValueSchema from "../models/attribute-value";
+
+export enum AttributeFieldType {
+  MULTI = "multi",
+  SINGLE = "single",
+  BOOLEAN = "boolean",
+  RANGE = "range",
+}
+
+export const ATTRIBUTE_RELATION_FIELDS = {
+  fields: "values.*",
+};
+export type AttributeRelationFieldList = typeof ATTRIBUTE_RELATION_FIELDS;
+
+export type AttributeType = Omit<InferTypeOf<typeof AttributeSchema>, "values">;
+
+export type AttributeRelationType = InferTypeOf<typeof AttributeSchema>;
+
+export type AttributeValueType = InferTypeOf<typeof AttributeValueSchema>;
+
+
+---
+
+
+//  src/modules/attribute/domain/attribute.schema.ts
+import { jsonString } from "@/shared/lib/zod";
+import { AttributeFieldType } from "./type";
+import { z } from "zod";
+
+export const AttributeCreateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  handle: z.string().min(1, "Handle is required"),
+  type: z.nativeEnum(AttributeFieldType),
+  filterable: z.boolean().default(false),
+  metadata: jsonString,
+});
+
+export type AttributeFormDefaultValues<
+  T extends z.ZodTypeAny = typeof AttributeCreateSchema,
+> = z.infer<T>;
+
+
+---
+
+
+//  src/modules/attribute/domain/from-create.schema.ts
+import { z } from "zod";
+import { AttributeValueCreateSchema } from "./attribute-value.schema";
+import { AttributeCreateSchema } from "./attribute.schema";
+
+export const AttributeRelationCreateFormSchema = z.object({
+  attributeData: AttributeCreateSchema,
+  valueListData: z.array(AttributeValueCreateSchema),
+});
+
+export type AttributeRelationCreateForm = z.infer<
+  typeof AttributeRelationCreateFormSchema
+>;
+
+
+---
+
+
+//  src/modules/attribute/domain/attribute-value.schema.ts
+import { jsonString } from "@/shared/lib/zod";
+import { z } from "zod";
+
+export const AttributeValueCreateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  value: z.string().min(1, "Value is required"),
+  rank: z.number().default(0),
+  metadata: jsonString,
+});
+
+export type AttributeValueFormDefaultValue<
+  T extends z.ZodTypeAny = typeof AttributeValueCreateSchema,
+> = z.infer<T>;
+
+
+---
+
+
+//  src/modules/attribute/domain/api.type.ts
+import { AttributeFormDefaultValues } from "./attribute.schema";
+import { AttributeValueFormDefaultValue } from "./attribute-value.schema";
+import { AttributeRelationCreateForm } from "./from-create.schema";
+import {
+  AttributeRelationType,
+  AttributeType,
+  AttributeValueType,
+} from "./type";
+
+export type AttributeListParams = {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  order?: string;
+  created_at?: string;
+  updated_at?: string;
+  name?: string;
+  handle?: string;
+};
+
+type MetadataResponse = {
+  count: number;
+  offset: number;
+  limit: number;
+};
+
+export type AttributeResponse = {
+  attributeData: AttributeType;
+};
+
+export type AttributeValueListResponse = {
+  valueListData: AttributeValueType[];
+};
+
+export type AttributeRelationResponse = AttributeResponse &
+  AttributeValueListResponse;
+
+export type AttributeListResponse = MetadataResponse & {
+  attributeList: AttributeType[];
+};
+
+export type AttributeRelationListResponse = MetadataResponse & {
+  attributeList: AttributeRelationType[];
+};
+
+// Payload
+export type AttributeCreatePayload = AttributeFormDefaultValues;
+export type AttributeValueCreatePayload = AttributeValueFormDefaultValue;
+
+export type AttributeRelationCreatePayload = AttributeRelationCreateForm;
+
+
+---
+
+
+//  src/modules/attribute/service/service.ts
+import { MedusaContext, MedusaService } from "@medusajs/framework/utils";
+import AttributeSchema from "../models/attribute";
+import AttributeValueSchema from "../models/attribute-value";
+import { FindConfig } from "@medusajs/framework/types";
+import { Context } from "vm";
+
+class AttributeModuleService extends MedusaService({
+  Attribute: AttributeSchema,
+  AttributeValue: AttributeValueSchema,
+}) {
+  // @ts-ignore
+  async retrieveAttribute(
+    id: string,
+
+    config?: FindConfig<any> | undefined,
+
+    @MedusaContext() sharedContext?: Context | undefined,
+  ) {
+    const attribute = await super.retrieveAttribute(id, config, sharedContext);
+    console.log("output_log: CUSTOM M =>>>", attribute);
+
+    return attribute;
+  }
+}
+
+export default AttributeModuleService;
+
+
+---
+
+
+//  src/modules/attribute/interface.client.ts
+"use client";
+
+export { useAttributeListWithValueListQuery } from "./models/query/use-attribute.query";
+
+export { AttributeFormCreate } from "./ui/form/attribute-form-create";
+
+export { AttributeFormUpdate } from "./ui/form/attribute-form-update";
+
+
+---
+
+
+//  src/modules/attribute/tool/metadata.ts
+export const getMetadata = (metadata: string | undefined) => {
+  return metadata ? JSON.parse(metadata) : {};
+};
+
+
+---

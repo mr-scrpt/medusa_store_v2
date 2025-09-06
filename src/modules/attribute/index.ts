@@ -1,4 +1,4 @@
-// src/modules/attributes/index.ts
+//  src/modules/attribute/index.ts
 
 import { Module } from "@medusajs/framework/utils";
 import AttributeModuleService from "./service/service";

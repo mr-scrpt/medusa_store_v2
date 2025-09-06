@@ -1,3 +1,4 @@
+//  src/modules/attribute/domain/api.type.ts
 import { AttributeFormDefaultValues } from "./attribute.schema";
 import { AttributeValueFormDefaultValue } from "./attribute-value.schema";
 import { AttributeRelationCreateForm } from "./from-create.schema";

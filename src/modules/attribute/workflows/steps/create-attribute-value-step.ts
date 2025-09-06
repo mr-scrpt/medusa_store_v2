@@ -1,3 +1,4 @@
+//  src/modules/attribute/workflows/steps/create-attribute-value-step.ts
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 import { ATTRIBUTE_MODULE } from "../..";
 import AttributeModuleService from "../../service/service";

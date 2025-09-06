@@ -1,3 +1,4 @@
+//  src/modules/attribute/api/route.api.ts
 const BASE_ENDPOINT = "/admin/attribute";
 export const API_ATTRIBUTE_ENDPOINT = {
   BASE: BASE_ENDPOINT,
