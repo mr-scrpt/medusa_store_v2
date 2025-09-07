@@ -1,7 +1,7 @@
 import {
   getAttribute,
-  updateAttribute,
+  // updateAttribute,
 } from "@/modules/attribute/interface.server";
 
 export const GET = getAttribute;
-export const POST = updateAttribute;
+// export const POST = updateAttribute;
