@@ -1,10 +1,8 @@
 //  src/modules/attribute/api/endpoint.api.ts
 import { sdk } from "@/shared/lib/medusa";
-import {
-  AttributeListParams,
-  AttributeRelationCreatePayload,
-} from "../interface.type";
+import { AttributeRelationCreatePayload } from "../interface.type";
 import { API_ATTRIBUTE_ENDPOINT } from "./route.api";
+import { QueryParamsBase } from "@/shared/lib/medusa.type";
 
 export const attributeApi = {
   get: async <T>({
@@ -12,14 +10,14 @@ export const attributeApi = {
     query,
   }: {
     id: string;
-    query?: AttributeListParams;
+    query?: QueryParamsBase;
   }): Promise<T> => {
     return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_BY_ID(id), {
       method: "GET",
       query,
     });
   },
-  getList: async <T>(query?: Record<string, any>): Promise<T> => {
+  getList: async <T>(query?: QueryParamsBase): Promise<T> => {
     return sdk.client.fetch(API_ATTRIBUTE_ENDPOINT.QUERY.GET_LIST, {
       method: "GET",
       query,

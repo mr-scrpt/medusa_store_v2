@@ -19,6 +19,6 @@ export type AttributeType = Omit<
   InferTypeOf<typeof AttributeSchema>,
   "valueList"
 >;
-export type AttributeValueType = InferTypeOf<typeof AttributeValueSchema>;
+export type AttributeRelationType = InferTypeOf<typeof AttributeSchema>;
 
-// export type AttributeRelationType = InferTypeOf<typeof AttributeSchema>;
+export type AttributeValueType = InferTypeOf<typeof AttributeValueSchema>;

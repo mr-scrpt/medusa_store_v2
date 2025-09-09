@@ -2,35 +2,24 @@
 import { AttributeFormDefaultValues } from "./attribute.schema";
 import { AttributeValueFormDefaultValue } from "./attribute-value.schema";
 import { AttributeRelationCreateForm } from "./from-create.schema";
-import { AttributeType, AttributeValueType } from "./type";
-
-export type AttributeListParams = {
-  q?: string;
-  limit?: number;
-  offset?: number;
-  order?: string;
-  created_at?: string;
-  updated_at?: string;
-  name?: string;
-  handle?: string;
-};
-
-type MetadataResponse = {
-  count: number;
-  offset: number;
-  limit: number;
-};
+import {
+  AttributeRelationType,
+  AttributeType,
+  AttributeValueType,
+} from "./type";
+import { MetadataResponse, QueryParamsBase } from "@/shared/lib/medusa.type";
 
 export type AttributeResponse = {
-  attributeData: AttributeType;
+  attribute: AttributeType;
 };
 
 export type AttributeValueListResponse = {
-  valueListData: AttributeValueType[];
+  valueList: AttributeValueType[];
 };
 
-export type AttributeRelationResponse = AttributeResponse &
-  AttributeValueListResponse;
+export type AttributeRelationResponse = {
+  attributeData: AttributeRelationType;
+};
 
 export type AttributeListResponse = {
   attributeList: AttributeType[];

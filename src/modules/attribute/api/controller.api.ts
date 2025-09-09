@@ -5,14 +5,16 @@ import { AttributeRelationCreatePayload } from "../domain/api.type";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
 export async function getAttribute(req: MedusaRequest, res: MedusaResponse) {
-  const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
 
-  const attribute = await attributeModuleService.retrieveAttribute(
-    req.params.id,
-    req.retrieveConfig,
-  );
+  const {
+    data: [attribute],
+  } = await query.graph({
+    entity: ATTRIBUTE_MODULE,
+    ...req.queryConfig,
+  });
 
-  res.status(200).json({ attribute });
+  res.json({ attribute });
 }
 
 export const listAttributes = async (
@@ -36,20 +38,6 @@ export const listAttributes = async (
     offset: skip,
   });
 };
-// export async function listAttributes(req: MedusaRequest, res: MedusaResponse) {
-//   const attributeModuleService = req.scope.resolve(ATTRIBUTE_MODULE);
-//
-//   const [attributes, count] =
-//     await attributeModuleService.listAndCountAttributes(
-//       req.filterableFields,
-//       req.listConfig,
-//     );
-//
-//   res.status(200).json({
-//     data: attributes,
-//     count: count,
-//   });
-// }
 
 export async function createAttribute(req: MedusaRequest, res: MedusaResponse) {
   try {

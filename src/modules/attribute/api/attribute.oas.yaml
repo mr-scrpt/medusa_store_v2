@@ -1,0 +1,235 @@
+# Версия спецификации OpenAPI
+openapi: 3.0.0
+
+# Базовая информация о вашем API
+info:
+  title: Admin Attributes API
+  description: API для управления атрибутами в админ-панели Medusa.
+  version: 1.0.0
+
+# Определение тегов для группировки эндпоинтов
+tags:
+  - name: Attributes
+    description: CRUD-операции для сущности Attribute.
+
+# Описание всех путей (эндпоинтов)
+paths:
+  /admin/attribute:
+    get:
+      summary: Список атрибутов
+      description: Получает список атрибутов с пагинацией и фильтрацией.
+      tags:
+        - Attributes
+      parameters:
+        - name: limit
+          in: query
+          description: Количество элементов на странице.
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Смещение для пагинации.
+          schema:
+            type: integer
+            default: 0
+        - name: fields
+          in: query
+          description: "Загружаемые связи, например, '*valueList'."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Успешный ответ со списком атрибутов.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAttributeListResponse"
+    post:
+      summary: Создать атрибут
+      description: Создает новый атрибут и связанные с ним значения.
+      tags:
+        - Attributes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateAttributePayload"
+      responses:
+        "201":
+          description: Атрибут успешно создан.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAttributeResponse" # Возвращается созданный атрибут
+        "400":
+          description: Ошибка валидации (например, пропущено обязательное поле).
+
+  /admin/attribute/{id}:
+    get:
+      summary: Получить атрибут по ID
+      description: Получает детальную информацию об одном атрибуте по его ID.
+      tags:
+        - Attributes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID атрибута.
+          schema:
+            type: string
+        - name: fields
+          in: query
+          description: "Загружаемые связи, например, '*valueList'."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Успешный ответ с данными атрибута.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAttributeResponse"
+        "404":
+          description: Атрибут с указанным ID не найден.
+
+    post:
+      summary: Обновить атрибут
+      description: Обновляет данные атрибута по его ID.
+      tags:
+        - Attributes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID атрибута для обновления.
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateAttributePayload"
+      responses:
+        "200":
+          description: Атрибут успешно обновлен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAttributeResponse"
+
+    delete:
+      summary: Удалить атрибут
+      description: Удаляет атрибут по его ID.
+      tags:
+        - Attributes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID атрибута для удаления.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Атрибут успешно удален.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDeleteResponse"
+
+# Переиспользуемые компоненты (схемы данных)
+components:
+  schemas:
+    # --- Базовые сущности ---
+    AttributeData:
+      type: object
+      properties:
+        id: { type: string, example: "attr_01K4HMT5H2M4TV9HQAF9A42HQ0" }
+        name: { type: string, example: "Fabric" }
+        handle: { type: string, example: "fabric" }
+        type: { type: string, enum: [multi, single, boolean, range] }
+        filterable: { type: boolean }
+        metadata: { type: object, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AttributeValue:
+      type: object
+      properties:
+        id: { type: string, example: "attrval_01K4HMT5HDZJPYF010KMTH5YQD" }
+        name: { type: string, example: "Silk" }
+        value: { type: string, example: "silk" }
+        rank: { type: integer, default: 0 }
+        metadata: { type: object, nullable: true }
+
+    # --- Схемы для Тела Запросов (Payloads) ---
+    AdminCreateAttributePayload:
+      type: object
+      properties:
+        attributeData:
+          type: object
+          required: [name, handle, type]
+          properties:
+            name: { type: string, example: "Color" }
+            handle: { type: string, example: "color" }
+            type: { type: string, enum: [multi, single, boolean, range] }
+            filterable: { type: boolean, default: false }
+            metadata:
+              {
+                type: string,
+                description: "JSON string",
+                example: '{"source":"manual"}',
+              }
+        valueListData:
+          type: array
+          items:
+            type: object
+            required: [name, value]
+            properties:
+              name: { type: string, example: "Red" }
+              value: { type: string, example: "#FF0000" }
+              rank: { type: integer, default: 0 }
+              metadata: { type: string, description: "JSON string" }
+
+    AdminUpdateAttributePayload:
+      type: object
+      properties:
+        name: { type: string, example: "Fabric Type (Updated)" }
+        filterable: { type: boolean, example: false }
+        metadata:
+          {
+            type: string,
+            description: "JSON string",
+            example: '{"updated_by":"admin"}',
+          }
+
+    # --- Схемы для Ответов API (Responses) ---
+    AdminAttributeResponse:
+      type: object
+      properties:
+        attributeData:
+          $ref: "#/components/schemas/AttributeData"
+        valueListData:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttributeValue"
+
+    AdminAttributeListResponse:
+      type: object
+      properties:
+        attributes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAttributeResponse"
+        count: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    AdminDeleteResponse:
+      type: object
+      properties:
+        id: { type: string }
+        object: { type: string, example: "attribute" }
+        deleted: { type: boolean, example: true }
