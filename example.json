@@ -1,0 +1,197 @@
+{
+  "products": [
+    {
+      "id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+      "title": "Medusa T-Shirt",
+      "subtitle": null,
+      "status": "published",
+      "external_id": null,
+      "description": "Reimagine the feeling of a classic T-shirt. With our cotton T-shirts, everyday essentials no longer have to be ordinary.",
+      "handle": "t-shirt",
+      "is_giftcard": false,
+      "discountable": true,
+      "thumbnail": "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
+      "collection_id": null,
+      "type_id": null,
+      "weight": "400",
+      "length": null,
+      "height": null,
+      "width": null,
+      "hs_code": null,
+      "origin_country": null,
+      "mid_code": null,
+      "material": null,
+      "created_at": "2025-09-03T09:21:30.360Z",
+      "updated_at": "2025-09-03T09:21:30.360Z",
+      "deleted_at": null,
+      "metadata": null,
+      "type": null,
+      "collection": null,
+      "options": [
+        {
+          "id": "opt_01K47E36QPHQ8K6DZKFCQR7M08",
+          "title": "Size",
+          "metadata": null,
+          "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+          "created_at": "2025-09-03T09:21:30.360Z",
+          "updated_at": "2025-09-03T09:21:30.360Z",
+          "deleted_at": null,
+          "values": [
+            {
+              "id": "optval_01K47E36QPD6H75TFDGH58XBTN",
+              "value": "M",
+              "metadata": null,
+              "option_id": "opt_01K47E36QPHQ8K6DZKFCQR7M08",
+              "created_at": "2025-09-03T09:21:30.360Z",
+              "updated_at": "2025-09-03T09:21:30.360Z",
+              "deleted_at": null
+            },
+            {
+              "id": "optval_01K47E36QP5NJQE3TKNGFRFD2G",
+              "value": "XL",
+              "metadata": null,
+              "option_id": "opt_01K47E36QPHQ8K6DZKFCQR7M08",
+              "created_at": "2025-09-03T09:21:30.360Z",
+              "updated_at": "2025-09-03T09:21:30.360Z",
+              "deleted_at": null
+            }
+          ]
+        },
+        {
+          "id": "opt_01K47E36QPHTGTRPNRP5BTPFS1",
+          "title": "Color",
+          "metadata": null,
+          "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+          "created_at": "2025-09-03T09:21:30.360Z",
+          "updated_at": "2025-09-03T09:21:30.360Z",
+          "deleted_at": null,
+          "values": [
+            {
+              "id": "optval_01K47E36QP0QBCT2WTZT37V48D",
+              "value": "Black",
+              "metadata": null,
+              "option_id": "opt_01K47E36QPHTGTRPNRP5BTPFS1",
+              "created_at": "2025-09-03T09:21:30.360Z",
+              "updated_at": "2025-09-03T09:21:30.360Z",
+              "deleted_at": null
+            }
+          ]
+        }
+      ],
+      "tags": [],
+      "images": [
+        {
+          "id": "img_01K47E36QQQ6036AN6CYNJQ1AV",
+          "url": "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
+          "metadata": null,
+          "rank": 0,
+          "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+          "created_at": "2025-09-03T09:21:30.360Z",
+          "updated_at": "2025-09-03T09:21:30.360Z",
+          "deleted_at": null
+        },
+        {
+          "id": "img_01K47E36QQAKARV8T9ZS6011R2",
+          "url": "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-back.png",
+          "metadata": null,
+          "rank": 1,
+          "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+          "created_at": "2025-09-03T09:21:30.360Z",
+          "updated_at": "2025-09-03T09:21:30.360Z",
+          "deleted_at": null
+        }
+      ],
+      "variants": [
+        {
+          "id": "variant_01K47E36RGEW18VEW5WWAD8HM5",
+          "title": "S / Black",
+          "sku": "SHIRT-S-BLACK",
+          "barcode": null,
+          "ean": null,
+          "upc": null,
+          "allow_backorder": false,
+          "manage_inventory": true,
+          "hs_code": null,
+          "origin_country": null,
+          "mid_code": null,
+          "material": null,
+          "weight": null,
+          "length": null,
+          "height": null,
+          "width": null,
+          "metadata": null,
+          "variant_rank": 0,
+          "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+          "created_at": "2025-09-03T09:21:30.386Z",
+          "updated_at": "2025-09-03T09:21:30.386Z",
+          "deleted_at": null,
+          "options": [
+            {
+              "id": "optval_01K47E36QPV0Z3HYB4AS3MZZP6",
+              "value": "S",
+              "metadata": null,
+              "option_id": "opt_01K47E36QPHQ8K6DZKFCQR7M08",
+              "option": {
+                "id": "opt_01K47E36QPHQ8K6DZKFCQR7M08",
+                "title": "Size",
+                "metadata": null,
+                "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+                "created_at": "2025-09-03T09:21:30.360Z",
+                "updated_at": "2025-09-03T09:21:30.360Z",
+                "deleted_at": null
+              },
+              "created_at": "2025-09-03T09:21:30.360Z",
+              "updated_at": "2025-09-03T09:21:30.360Z",
+              "deleted_at": null
+            },
+            {
+              "id": "optval_01K47E36QP0QBCT2WTZT37V48D",
+              "value": "Black",
+              "metadata": null,
+              "option_id": "opt_01K47E36QPHTGTRPNRP5BTPFS1",
+              "option": {
+                "id": "opt_01K47E36QPHTGTRPNRP5BTPFS1",
+                "title": "Color",
+                "metadata": null,
+                "product_id": "prod_01K47E36QN0KEVDGSCVV4M2DZH",
+                "created_at": "2025-09-03T09:21:30.360Z",
+                "updated_at": "2025-09-03T09:21:30.360Z",
+                "deleted_at": null
+              },
+              "created_at": "2025-09-03T09:21:30.360Z",
+              "updated_at": "2025-09-03T09:21:30.360Z",
+              "deleted_at": null
+            }
+          ],
+          "prices": [
+            {
+              "id": "price_01K47E36SEDEYSYQ5VKZ5283ZT",
+              "amount": 10,
+              "currency_code": "eur",
+              "min_quantity": null,
+              "max_quantity": null,
+              "variant_id": "variant_01K47E36RGEW18VEW5WWAD8HM5",
+              "created_at": "2025-09-03T09:21:30.416Z",
+              "updated_at": "2025-09-03T09:21:30.416Z",
+              "rules": {}
+            },
+            {
+              "id": "price_01K47E36SEAW6HP61WSGBPXV2J",
+              "amount": 15,
+              "currency_code": "usd",
+              "min_quantity": null,
+              "max_quantity": null,
+              "variant_id": "variant_01K47E36RGEW18VEW5WWAD8HM5",
+              "created_at": "2025-09-03T09:21:30.416Z",
+              "updated_at": "2025-09-03T09:21:30.416Z",
+              "rules": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "count": 50,
+  "offset": 0,
+  "limit": 2
+}

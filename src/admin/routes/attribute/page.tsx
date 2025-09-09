@@ -17,15 +17,13 @@ import { useAttributeTableColumns } from "../../vm/table/columns/use-attribute-t
 const AttributesPage = () => {
   const navigate = useNavigate();
   const { columns, order, sorting, limit } = useAttributeTableColumns();
-  const { attributeList, count, isLoading } =
-    useAttributeListWithValueListQuery({
-      order,
-      limit,
-    });
-  console.log("output_log: ATTRIBUTES =>>>", attributeList);
+  const { data, count, isLoading } = useAttributeListWithValueListQuery({
+    order,
+    limit,
+  });
 
   const table = useDataTable({
-    data: attributeList || [],
+    data: attributeList.map((attribute) => attribute.attributeData) || [],
     columns,
     getRowId: (row) => row.id,
     rowCount: count,

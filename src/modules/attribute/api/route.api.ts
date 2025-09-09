@@ -1,14 +1,15 @@
 //  src/modules/attribute/api/route.api.ts
 const BASE_ENDPOINT = "/admin/attribute";
+
 export const API_ATTRIBUTE_ENDPOINT = {
   BASE: BASE_ENDPOINT,
 
   QUERY: {
-    GET_LIST: "/admin/attribute",
+    GET_LIST: BASE_ENDPOINT,
     GET_BY_ID: (id: string) => `${BASE_ENDPOINT}/${id}`,
   },
   MUTATION: {
-    CREATE: "/admin/attribute",
+    CREATE: BASE_ENDPOINT,
     UPDATE: (id: string) => `${BASE_ENDPOINT}/${id}`,
     DELETE: (id: string) => `${BASE_ENDPOINT}/${id}`,
   },

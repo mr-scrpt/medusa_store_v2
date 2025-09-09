@@ -1,4 +1,8 @@
 import {
+  attributeFieldQueryConfig,
+  attributeListFieldQueryConfig,
+} from "@/modules/attribute/api/fieldList.query";
+import {
   defineMiddlewares,
   validateAndTransformQuery,
 } from "@medusajs/framework/http";
@@ -14,38 +18,16 @@ export default defineMiddlewares({
       method: "GET",
       middlewares: [
         validateAndTransformQuery(GetAttributesSchema, {
-          defaults: [
-            "id",
-            "name",
-            "handle",
-            "type",
-            "filterable",
-            "metadata",
-            "created_at",
-            "updated_at",
-          ],
-          isList: true,
+          ...attributeListFieldQueryConfig,
         }),
       ],
     },
     {
-      // Используем параметр :id для соответствия роуту
       matcher: "/admin/attribute/:id",
       method: "GET",
       middlewares: [
         validateAndTransformQuery(GetAttributesSchema, {
-          defaults: [
-            "id",
-            "name",
-            "handle",
-            "type",
-            "filterable",
-            "metadata",
-            "created_at",
-            "updated_at",
-          ],
-          // Важно: для одной записи это false
-          isList: false,
+          ...attributeFieldQueryConfig,
         }),
       ],
     },

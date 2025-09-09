@@ -2,11 +2,7 @@
 import { AttributeFormDefaultValues } from "./attribute.schema";
 import { AttributeValueFormDefaultValue } from "./attribute-value.schema";
 import { AttributeRelationCreateForm } from "./from-create.schema";
-import {
-  AttributeRelationType,
-  AttributeType,
-  AttributeValueType,
-} from "./type";
+import { AttributeType, AttributeValueType } from "./type";
 
 export type AttributeListParams = {
   q?: string;
@@ -36,13 +32,13 @@ export type AttributeValueListResponse = {
 export type AttributeRelationResponse = AttributeResponse &
   AttributeValueListResponse;
 
-export type AttributeListResponse = MetadataResponse & {
+export type AttributeListResponse = {
   attributeList: AttributeType[];
-};
+} & MetadataResponse;
 
-export type AttributeRelationListResponse = MetadataResponse & {
-  attributeList: AttributeRelationType[];
-};
+export type AttributeRelationListResponse = {
+  data: Array<AttributeRelationResponse>;
+} & MetadataResponse;
 
 // Payload
 export type AttributeCreatePayload = AttributeFormDefaultValues;

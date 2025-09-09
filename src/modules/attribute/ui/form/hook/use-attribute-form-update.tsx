@@ -17,6 +17,7 @@ export const useAttributeFormUpdate = (props: UseAttributeFormUpdateProps) => {
     () => buildAttributeToForm(attributeData),
     [attributeData],
   );
+  console.log("output_log: FORM VALUES =>>>", formValues);
 
   return {
     formValues,
