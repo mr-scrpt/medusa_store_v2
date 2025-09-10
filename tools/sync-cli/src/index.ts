@@ -9,6 +9,7 @@ import { buildUnifiedSpecFromGithub } from './lib/github-spec-merger.ts';
 import { generateCleanCollection } from './lib/postman-converter.ts';
 import { updateCollection, createCollection } from './lib/postman-api.ts';
 
+
 const program = new Command();
 
 /**
@@ -86,14 +87,36 @@ program
   .action(async () => {
     console.log("--- Running Full Sync ---");
     try {
+      // 1. Генерируем обе спецификации независимо
       const localSpec = await generateLocalSpec();
       const githubSpec = await buildUnifiedSpecFromGithub();
-      
-      console.log("🔄 Merging local and GitHub specs...");
-      const mergedSpec = merge(githubSpec, localSpec);
 
-      const postmanCollection = await generateCleanCollection(mergedSpec);
-      await syncCollectionToPostman(postmanCollection);
+      // 2. Генерируем две отдельные Postman-коллекции
+      console.log("🔄 Generating collection from GitHub spec...");
+      const githubCollection = await generateCleanCollection(githubSpec);
+      console.log("🔄 Generating collection from local spec...");
+      const localCollection = await generateCleanCollection(localSpec);
+
+      // 3. Собираем финальную коллекцию с нужной структурой папок
+      console.log("🏗️ Building final collection with folder structure...");
+      const finalCollection = {
+        ...githubCollection, // Используем коллекцию с GitHub как основу для info, auth и т.д.
+        item: [
+          {
+            name: "Base Medusa Store",
+            item: githubCollection.item,
+            description: "Standard endpoints from the core Medusa repository."
+          },
+          {
+            name: "Custom Medusa Store",
+            item: localCollection.item,
+            description: "Custom endpoints generated from the local project source code."
+          }
+        ]
+      };
+
+      // 4. Синхронизируем итоговую коллекцию
+      await syncCollectionToPostman(finalCollection);
       console.log("\n🏁 Full Sync process finished.");
     } catch (error) {
       console.error("\n❌ Error during full-sync:", error);

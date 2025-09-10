@@ -108,10 +108,11 @@ export async function generateLocalSpec(): Promise<any> {
   for (const filePath of endpointFiles) {
     const sourceFile = project.addSourceFileAtPath(filePath);
     const moduleName = path.basename(path.dirname(path.dirname(filePath)));
-    const tagName = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
+    const tagName = `Custom ${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}`;
     allTags.add(tagName);
 
-    console.log(`\n🔎 Processing module: ${moduleName}`);
+    console.log(`
+🔎 Processing module: ${moduleName}`);
     const apiObject = sourceFile.getVariableDeclaration(`${moduleName}Api`)?.getInitializerIfKind(ts.SyntaxKind.ObjectLiteralExpression);
     if (!apiObject) continue;
     console.log(`  - Found API object: "${moduleName}Api"`);
@@ -126,20 +127,37 @@ export async function generateLocalSpec(): Promise<any> {
     const baseInitializer = routeObject.getPropertyOrThrow("BASE").asKindOrThrow(ts.SyntaxKind.PropertyAssignment).getInitializerOrThrow();
     const baseUrl = baseInitializer.asKind(ts.SyntaxKind.Identifier)?.getDefinitions()[0].getDeclarationNode().getInitializer().getText().replace(/[""]/g, "");
 
-    for (const methodProp of apiObject.getProperties()) {
+    const properties = apiObject.getProperties();
+    console.log(`  - Found ${properties.length} properties from ts-morph: ${properties.map(p => p.getSymbol()?.getName()).join(', ')}`);
+
+    for (const methodProp of properties) {
       if (!Node.isPropertyAssignment(methodProp)) continue;
       const methodName = methodProp.getName();
+      
+      console.log(`    - Processing method: "${methodName}"`);
+
       const methodInitializer = methodProp.getInitializerIfKindOrThrow(ts.SyntaxKind.ArrowFunction);
       const fetchCall = methodInitializer.getFirstDescendantByKind(ts.SyntaxKind.CallExpression);
-      if (!fetchCall) continue;
+      if (!fetchCall) {
+        console.log(`      - ⚠️ Could not find fetch call for method: ${methodName}`);
+        continue;
+      }
 
       const fetchOptions = fetchCall.getArguments()[1]?.asKind(ts.SyntaxKind.ObjectLiteralExpression);
-      const httpMethod = fetchOptions?.getProperty("method")?.getInitializer()?.getText().replace(/[\'"`]/g, "").toLowerCase();
+      let httpMethod = fetchOptions?.getProperty("method")?.getInitializer()?.getText().replace(/[\'"`]/g, "").toLowerCase();
+      
+      // ВАЖНОЕ ИСПРАВЛЕНИЕ: Если метод не указан, по умолчанию это GET
+      if (!httpMethod) {
+        httpMethod = 'get';
+      }
+
       const urlNodeText = fetchCall.getArguments()[0].getText();
       let urlPath = baseUrl;
-      if (urlNodeText.includes("GET_BY_ID") || urlNodeText.includes("UPDATE") || urlNodeText.includes("DELETE")) {
-        urlPath += "/{id}";
+      // Простое сопоставление имени метода с ожидаемым поведением URL
+      if (methodName === 'get' || methodName === 'update' || methodName === 'delete') {
+        urlPath += `/{id}`;
       }
+
       if (!httpMethod || !urlPath) continue;
 
       const pathDefinition: any = { summary: `${methodName} ${tagName}`, tags: [tagName], responses: { "200": { description: "OK" } } };
@@ -179,6 +197,7 @@ export async function generateLocalSpec(): Promise<any> {
 
   const yamlSpec = yaml.dump(openApiDocument);
   await fs.writeFile(config.LOCAL_OPENAPI_OUTPUT_PATH, yamlSpec);
-  console.log(`\n✅ Local spec file generated successfully at: ${config.LOCAL_OPENAPI_OUTPUT_PATH}`);
+  console.log(`
+✅ Local spec file generated successfully at: ${config.LOCAL_OPENAPI_OUTPUT_PATH}`);
   return openApiDocument;
 }

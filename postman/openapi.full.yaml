@@ -3,29 +3,29 @@ info:
   title: Medusa Custom API (Auto-Generated)
   version: 1.0.0
 tags:
-  - name: Attribute
-    description: Operations for Attribute
+  - name: Custom Attribute
+    description: Operations for Custom Attribute
 paths:
   /admin/attribute/{id}:
     get:
-      summary: get Attribute
+      summary: get Custom Attribute
       tags:
-        - Attribute
+        - Custom Attribute
       responses:
         '200':
           description: OK
   /admin/attribute:
     get:
-      summary: getList Attribute
+      summary: getList Custom Attribute
       tags:
-        - Attribute
+        - Custom Attribute
       responses:
         '200':
           description: OK
     post:
-      summary: create Attribute
+      summary: create Custom Attribute
       tags:
-        - Attribute
+        - Custom Attribute
       responses:
         '200':
           description: OK
