@@ -5,13 +5,13 @@ const config = require("../config");
 function addCustomizations(collection, email, password) {
   console.log("🔧 Applying customizations...");
   const authFolder = {
-    name: "Authentication (Custom)", 
-    item: [ 
-      { 
-        name: "Admin: Login and Save Token", 
-        event: [ 
+    name: "Authentication (Custom)",
+    item: [
+      {
+        name: "Admin: Login and Save Token",
+        event: [
           {
-            listen: "test", 
+            listen: "test",
             script: {
               type: "text/javascript",
               exec: [
@@ -30,15 +30,19 @@ function addCustomizations(collection, email, password) {
             },
           },
         ],
-        request: { 
+        request: {
           method: "POST",
           header: [{ key: "Content-Type", value: "application/json" }],
           body: {
             mode: "raw",
-            raw: JSON.stringify({
-              email: "{{medusa_admin_email}}",
-              password: "{{medusa_admin_password}}"
-            }, null, 2),
+            raw: JSON.stringify(
+              {
+                email: "{{medusa_admin_email}}",
+                password: "{{medusa_admin_password}}",
+              },
+              null,
+              2,
+            ),
           },
           url: {
             raw: "{{base_url}}/auth/user/emailpass",
@@ -50,7 +54,6 @@ function addCustomizations(collection, email, password) {
     ],
   };
 
-  
   collection.auth = {
     type: "bearer",
     bearer: [{ key: "token", value: "{{medusa_jwt_token}}", type: "string" }],
@@ -59,7 +62,7 @@ function addCustomizations(collection, email, password) {
     { key: "base_url", value: "http://localhost:9000" },
     { key: "medusa_admin_email", value: email || "" },
     { key: "medusa_admin_password", value: password || "" },
-    { key: "apiKey", value: process.env.MEDUSA_API_KEY || "" }
+    { key: "apiKey", value: process.env.MEDUSA_API_KEY || "" },
   ];
 
   if (!collection.item) collection.item = [];
@@ -87,18 +90,15 @@ function cleanGeneratedRequests(items) {
   if (!items || !Array.isArray(items)) {
     return;
   }
-  items.forEach(item => {
-    
+  items.forEach((item) => {
     if (item.request) {
-      
-      delete item.request.auth; 
+      delete item.request.auth;
 
-      
       if (item.request.url && item.request.url.query) {
         item.request.url.query = [];
       }
     }
-    
+
     if (item.item) {
       cleanGeneratedRequests(item.item);
     }
@@ -109,7 +109,7 @@ async function generateCleanCollection(spec) {
   console.log("🔄 Converting OpenAPI spec to Postman collection...");
   const converterOptions = {
     disableOptionalParameters: true,
-    folderStrategy: 'Tags'
+    folderStrategy: "Tags",
   };
   const conversionResult = await new Promise((resolve, reject) => {
     convert({ type: "json", data: spec }, converterOptions, (err, result) => {
@@ -122,19 +122,22 @@ async function generateCleanCollection(spec) {
     throw new Error(`Postman conversion failed: ${conversionResult.reason}`);
   }
 
-let finalCollection = conversionResult.output[0].data;
-  
-  
-  finalCollection = addCustomizations(finalCollection, config.MEDUSA_ADMIN_EMAIL, config.MEDUSA_ADMIN_PASSWORD);
-  
-  
+  let finalCollection = conversionResult.output[0].data;
+
+  finalCollection = addCustomizations(
+    finalCollection,
+    config.MEDUSA_ADMIN_EMAIL,
+    config.MEDUSA_ADMIN_PASSWORD,
+  );
+
   finalCollection = normalizeRequestUrls(finalCollection);
 
-  
   console.log("🧼 Cleaning up generated requests (auth & query params)...");
   cleanGeneratedRequests(finalCollection.item);
 
   console.log("✅ Collection generated and cleaned successfully.");
-  return finalCollection;}
+  return finalCollection;
+}
 
 module.exports = { generateCleanCollection };
+
