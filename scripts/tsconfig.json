@@ -3,7 +3,8 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true
   },
   "include": ["./**/*.mts", "../src/**/*.ts"]
 }
