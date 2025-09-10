@@ -1,0 +1,89 @@
+openapi: 3.0.0
+info:
+  title: Medusa Custom API (Auto-Generated)
+  version: 1.0.0
+tags:
+  - name: Attribute
+    description: Operations for Attribute
+paths:
+  /admin/attribute/{id}:
+    get:
+      summary: get Attribute
+      tags:
+        - Attribute
+      responses:
+        '200':
+          description: OK
+  /admin/attribute:
+    get:
+      summary: getList Attribute
+      tags:
+        - Attribute
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: create Attribute
+      tags:
+        - Attribute
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeRelationCreateFormSchema'
+components:
+  schemas:
+    AttributeRelationCreateFormSchema:
+      type: object
+      properties:
+        attributeData:
+          type: object
+          properties:
+            name:
+              type: string
+            handle:
+              type: string
+            type:
+              type: string
+              enum:
+                - multi
+                - single
+                - boolean
+                - range
+            filterable:
+              type: boolean
+            metadata:
+              type: string
+              description: Could not determine type
+          required:
+            - name
+            - handle
+            - type
+            - filterable
+            - metadata
+        valueListData:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+              rank:
+                type: number
+              metadata:
+                type: string
+                description: Could not determine type
+            required:
+              - name
+              - value
+              - rank
+              - metadata
+      required:
+        - attributeData
+        - valueListData
